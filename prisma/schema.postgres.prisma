@@ -1,0 +1,62 @@
+// Prisma schema สำหรับ PostgreSQL (Vercel Postgres, Supabase, Neon)
+// ใช้สำหรับ deploy บน Vercel หรือ platform ที่รองรับ Postgres แบบ persistent
+//
+// วิธีใช้:
+// 1. ตั้งค่า DATABASE_URL เป็น connection string ของ Postgres
+//    เช่น postgresql://user:pass@host:5432/dbname?sslmode=require
+// 2. รัน: bunx prisma db push (เพื่อสร้างตารางใน Postgres)
+// 3. รัน: bun run scripts/migrate-sqlite-to-postgres.ts (เพื่อย้ายข้อมูลเดิม)
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  // สำหรับ Vercel Postgres อาจต้องเพิ่ม directUrl
+  directUrl = env("DIRECT_DATABASE_URL")
+}
+
+// รายการห้องเรียนของโรงเรียนบ้านหนองบัวโนนเมือง
+model Classroom {
+  id        String   @id @default(cuid())
+  code      String   @unique // เช่น "ป.1", "อ.1", "ม.1"
+  name      String            // ชื่อเต็ม เช่น "ประถมศึกษาปีที่ 1"
+  level     String            // ระดับ เช่น "อนุบาล", "ประถม", "มัธยมต้น"
+  sortOrder Int      @default(0)
+  records   AttendanceRecord[]
+
+  @@index([level])
+}
+
+// บันทึกสถิตินักเรียนรายวัน แยกตามห้องเรียน พร้อมแยกชาย-หญิงทุกสถานะ
+model AttendanceRecord {
+  id            String   @id @default(cuid())
+  date          String             // YYYY-MM-DD
+  classroomId   String
+  classroom     Classroom @relation(fields: [classroomId], references: [id], onDelete: Cascade)
+  // จำนวนนักเรียนทั้งหมด
+  totalMale     Int      @default(0)
+  totalFemale   Int      @default(0)
+  // ป่วย (แยกชาย/หญิง)
+  sickMale      Int      @default(0)
+  sickFemale    Int      @default(0)
+  // ลา (แยกชาย/หญิง)
+  leaveMale     Int      @default(0)
+  leaveFemale   Int      @default(0)
+  // ขาด (แยกชาย/หญิง)
+  absentMale    Int      @default(0)
+  absentFemale  Int      @default(0)
+  // มา (คำนวณอัตโนมัติ)
+  presentMale   Int      @default(0)
+  presentFemale Int      @default(0)
+  note          String?
+  recordedBy    String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@unique([date, classroomId])
+  @@index([date])
+  @@index([classroomId])
+}

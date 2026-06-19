@@ -1,0 +1,10 @@
+{
+  "name": "attendance-sync",
+  "version": "1.0.0",
+  "scripts": {
+    "dev": "bun index.ts"
+  },
+  "dependencies": {
+    "socket.io": "^4.7.5"
+  }
+}
