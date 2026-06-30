@@ -21,7 +21,7 @@ export async function GET(req: NextRequest) {
 
   try {
     const classrooms = await db.classroom.findMany({
-      orderBy: { sortOrder: 'asc' },
+      orderBy: [{ level: 'asc' }, { room: 'asc' }],
     })
     const records = await db.attendanceRecord.findMany({
       where: { date },
