@@ -15,6 +15,7 @@ const sarabun = Sarabun({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || "https://nbm-stats.vercel.app"),
   title: "สถิตินักเรียนประจำวัน | โรงเรียนบ้านหนองบัวโนนเมือง",
   description:
     "ระบบบันทึกและสรุปสถิตินักเรียนประจำวัน โรงเรียนบ้านหนองบัวโนนเมือง — กรอกจำนวนนักเรียนชาย/หญิง และจำนวนที่ป่วย/ลา/ขาด ระบบคำนวณจำนวนที่มาให้เอง รองรับการใช้งานพร้อมกันหลายคนแบบเรียลไทม์",

@@ -1,4 +1,12 @@
 {
+  "env": {
+    "NEXTAUTH_URL": "https://nbm-stats.vercel.app"
+  },
+  "build": {
+    "env": {
+      "NEXTAUTH_URL": "https://nbm-stats.vercel.app"
+    }
+  },
   "crons": [
     {
       "path": "/api/cron/remind",
