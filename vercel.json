@@ -1,7 +1,4 @@
 {
-  "alias": [
-    "nbm-stats.vercel.app"
-  ],
   "crons": [
     {
       "path": "/api/cron/remind",
