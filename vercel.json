@@ -1,12 +1,9 @@
 {
-  "env": {
-    "NEXTAUTH_URL": "https://nbm-stats.vercel.app"
-  },
-  "build": {
-    "env": {
-      "NEXTAUTH_URL": "https://nbm-stats.vercel.app"
-    }
-  },
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": "nextjs",
+  "buildCommand": "bun run build:vercel",
+  "installCommand": "bun install",
+  "devCommand": "bun run dev",
   "crons": [
     {
       "path": "/api/cron/remind",
@@ -15,6 +12,57 @@
     {
       "path": "/api/cron/report",
       "schedule": "0 8 * * 1-5"
+    }
+  ],
+  "env": {
+    "NEXTAUTH_URL": "https://nbm-stats.vercel.app"
+  },
+  "build": {
+    "env": {
+      "NEXTAUTH_URL": "https://nbm-stats.vercel.app"
+    }
+  },
+  "functions": {
+    "src/app/api/auth/[...nextauth]/route.ts": {
+      "maxDuration": 30
+    },
+    "src/app/api/attendance/route.ts": {
+      "maxDuration": 30
+    },
+    "src/app/api/summary/route.ts": {
+      "maxDuration": 30
+    },
+    "src/app/api/calendar/route.ts": {
+      "maxDuration": 30
+    },
+    "src/app/api/trends/route.ts": {
+      "maxDuration": 30
+    },
+    "src/app/api/classrooms/route.ts": {
+      "maxDuration": 30
+    }
+  },
+  "headers": [
+    {
+      "source": "/sw.js",
+      "headers": [
+        { "key": "Cache-Control", "value": "public, max-age=0, must-revalidate" },
+        { "key": "Service-Worker-Allowed", "value": "/" },
+        { "key": "Content-Type", "value": "application/javascript; charset=utf-8" }
+      ]
+    },
+    {
+      "source": "/manifest.json",
+      "headers": [
+        { "key": "Content-Type", "value": "application/manifest+json" },
+        { "key": "Cache-Control", "value": "public, max-age=3600" }
+      ]
+    },
+    {
+      "source": "/icons/(.*)",
+      "headers": [
+        { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }
+      ]
     }
   ]
 }
