@@ -10,24 +10,6 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model User {
-  id        String   @id @default(cuid())
-  email     String   @unique
-  name      String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-}
-
-model Post {
-  id        String   @id @default(cuid())
-  title     String
-  content   String?
-  published Boolean  @default(false)
-  authorId  String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-}
-
 // รายการห้องเรียนของโรงเรียนบ้านหนองบัวโนนเมือง
 model Classroom {
   id        String   @id @default(cuid())
@@ -35,6 +17,8 @@ model Classroom {
   name      String            // ชื่อเต็ม เช่น "ประถมศึกษาปีที่ 1"
   level     String            // ระดับ เช่น "อนุบาล", "ประถม", "มัธยมต้น"
   sortOrder Int      @default(0)
+  defaultMale   Int      @default(0)
+  defaultFemale Int      @default(0)
   records   AttendanceRecord[]
 }
 
@@ -66,4 +50,27 @@ model AttendanceRecord {
 
   @@unique([date, classroomId])
   @@index([date])
+}
+
+// จัดการบทบาทผู้ใช้ (admin/ผู้อำนวยการ/ครู)
+model UserRole {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String?
+  role      String   @default("teacher") // admin, director, teacher
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// บันทึกครูเวรประจำวัน
+model DailyLog {
+  id                   String    @id @default(cuid())
+  date                 String    @unique
+  content              String
+  recordedBy           String?
+  directorApprovedBy   String?
+  directorApprovedName String?
+  directorApprovedAt   DateTime?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
 }

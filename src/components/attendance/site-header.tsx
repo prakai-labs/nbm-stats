@@ -1,8 +1,10 @@
 'use client'
 
-import { GraduationCap, Users, Wifi, WifiOff } from 'lucide-react'
+import { GraduationCap, Users, Wifi, WifiOff, Shield } from 'lucide-react'
 import { formatThaiDate } from './utils'
 import { UserMenu } from '@/components/auth/user-menu'
+import { useSession } from 'next-auth/react'
+import Link from 'next/link'
 
 interface SiteHeaderProps {
   isConnected: boolean
@@ -11,6 +13,7 @@ interface SiteHeaderProps {
 }
 
 export function SiteHeader({ isConnected, onlineCount, todayStr }: SiteHeaderProps) {
+  const { data: session } = useSession()
   return (
     <header className="sticky top-0 z-40 border-b border-emerald-100/80 bg-white/85 backdrop-blur-md">
       <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-3 sm:px-6">
@@ -60,6 +63,15 @@ export function SiteHeader({ isConnected, onlineCount, todayStr }: SiteHeaderPro
             </span>
           </div>
           <UserMenu />
+          {session?.user?.isAdmin && (
+            <Link
+              href="/admin"
+              className="flex items-center gap-1 rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-medium text-red-700 transition-colors hover:bg-red-100"
+            >
+              <Shield className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Admin</span>
+            </Link>
+          )}
         </div>
       </div>
     </header>

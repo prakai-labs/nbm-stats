@@ -5,7 +5,7 @@ import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import { CalendarDays, LayoutDashboard, Sparkles, Loader2, FileText } from 'lucide-react'
+import { CalendarDays, LayoutDashboard, Sparkles, Loader2, FileText, AlertTriangle, FileSpreadsheet } from 'lucide-react'
 import { SiteHeader } from '@/components/attendance/site-header'
 import { SiteFooter } from '@/components/attendance/site-footer'
 import { SummaryCards } from '@/components/attendance/summary-cards'
@@ -14,11 +14,11 @@ import { TrendsChart } from '@/components/attendance/trends-chart'
 import { HistoryTable } from '@/components/attendance/history-table'
 import { CalendarView } from '@/components/attendance/calendar-view'
 import { ReportView } from '@/components/attendance/report-view'
+import { DailyLog } from '@/components/attendance/daily-log'
 import { useSocketSync } from '@/components/attendance/use-socket-sync'
 import { todayBangkok } from '@/components/attendance/utils'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 
-const DATE_KEY = 'bnnm-selected-date'
 const TAB_KEY = 'bnnm-active-tab'
 
 type TabKey = 'today' | 'calendar' | 'report'
@@ -32,10 +32,7 @@ export default function Home() {
   const teacherName = session?.user?.name || session?.user?.email || ''
   const teacherEmail = session?.user?.email || ''
 
-  const [date, setDate] = useState<string>(() => {
-    if (typeof window === 'undefined') return todayStr
-    return localStorage.getItem(DATE_KEY) ?? todayStr
-  })
+  const [date, setDate] = useState<string>(todayStr)
   const [activeTab, setActiveTab] = useState<TabKey>(() => {
     if (typeof window === 'undefined') return 'today'
     const url = new URL(window.location.href)
@@ -51,9 +48,6 @@ export default function Home() {
     }
   }, [status, router])
 
-  useEffect(() => {
-    localStorage.setItem(DATE_KEY, date)
-  }, [date])
 
   useEffect(() => {
     localStorage.setItem(TAB_KEY, activeTab)
@@ -117,6 +111,14 @@ export default function Home() {
     }
   }
 
+  const handleExportExcel = () => {
+    const [year, month] = date.split('-').map(Number)
+    const lastDay = new Date(year, month, 0).getDate()
+    const from = `${year}-${String(month).padStart(2, '0')}-01`
+    const to = `${year}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`
+    window.open(`/api/export-excel?from=${from}&to=${to}`)
+  }
+
   // แสดง loading ระหว่างรอ session
   if (status === 'loading' || !session) {
     return (
@@ -164,6 +166,7 @@ export default function Home() {
               <span className="ml-2 opacity-75">({teacherEmail})</span>
             )}
           </div>
+
         </div>
       </section>
 
@@ -187,6 +190,7 @@ export default function Home() {
           {/* TAB: รายวัน */}
           <TabsContent value="today" className="space-y-6">
             <SummaryCards
+              date={date}
               totalMale={summary.totalMale}
               totalFemale={summary.totalFemale}
               totalStudents={summary.totalStudents}
@@ -206,6 +210,13 @@ export default function Home() {
             />
 
             {/* teacherName ถูก control โดย session — ส่ง handler ว่างไปเพื่อให้ฟอร์มยังทำงาน */}
+{summary.totalStudents > 0 && ((summary.present / summary.totalStudents) * 100) < 80 && (
+              <div className="flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                <AlertTriangle className="h-4 w-4 shrink-0" />
+                <span>⚠️ อัตราการมาเรียนวันนี้ต่ำกว่า 80% ({((summary.present / summary.totalStudents) * 100).toFixed(1)}%) — กรุณาตรวจสอบ</span>
+              </div>
+            )}
+
             <AttendanceForm
               date={date}
               onDateChange={setDate}
@@ -219,6 +230,8 @@ export default function Home() {
               onStopEditing={stopEditing}
               onSaved={broadcastSaved}
             />
+
+            <DailyLog date={date} teacherName={teacherName} />
 
             <div className="grid grid-cols-1 gap-6 lg:grid-cols-5">
               <div className="lg:col-span-3">
@@ -240,6 +253,16 @@ export default function Home() {
 
           {/* TAB: รายงาน PDF */}
           <TabsContent value="report" className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-slate-800">รายงาน</h2>
+              <button
+                onClick={handleExportExcel}
+                className="inline-flex items-center gap-1.5 rounded-full bg-emerald-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-emerald-700 transition"
+              >
+                <FileSpreadsheet className="h-3.5 w-3.5" />
+                Export Excel
+              </button>
+            </div>
             <ReportView />
           </TabsContent>
         </Tabs>

@@ -43,9 +43,17 @@ interface ReportData {
     totalFemale: number
     total: number
     present: number
+    presentMale: number
+    presentFemale: number
     sick: number
+    sickMale: number
+    sickFemale: number
     leave: number
+    leaveMale: number
+    leaveFemale: number
     absent: number
+    absentMale: number
+    absentFemale: number
     rate: number
     hasData: boolean
     classroomCount: number
@@ -123,7 +131,7 @@ export function ReportView() {
       if (!res.ok) throw new Error('โหลดข้อมูลรายงานไม่สำเร็จ')
       return res.json() as Promise<ReportData>
     },
-    enabled: fromDate && toDate && fromDate <= toDate,
+    enabled: !!(fromDate && toDate && fromDate <= toDate),
   })
 
   const summary = data?.summary

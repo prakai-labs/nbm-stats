@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth'
 import { db } from '@/lib/db'
 
 // GET /api/attendance?date=YYYY-MM-DD
@@ -93,6 +95,8 @@ export async function POST(req: NextRequest) {
     const presentMale = Math.max(0, male - sM - lM - aM)
     const presentFemale = Math.max(0, female - sF - lF - aF)
 
+    const currentUser = (await getServerSession(authOptions))?.user?.name || recordedBy || 'ไม่ระบุชื่อ'
+
     const record = await db.attendanceRecord.upsert({
       where: {
         date_classroomId: { date, classroomId },
@@ -109,7 +113,7 @@ export async function POST(req: NextRequest) {
         presentMale,
         presentFemale,
         note: note ?? null,
-        recordedBy: recordedBy ?? null,
+        recordedBy: currentUser,
       },
       create: {
         date,
@@ -125,7 +129,7 @@ export async function POST(req: NextRequest) {
         presentMale,
         presentFemale,
         note: note ?? null,
-        recordedBy: recordedBy ?? null,
+        recordedBy: currentUser,
       },
       include: { classroom: true },
     })

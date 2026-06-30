@@ -14,8 +14,6 @@ generator client {
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
-  // สำหรับ Vercel Postgres อาจต้องเพิ่ม directUrl
-  directUrl = env("DIRECT_DATABASE_URL")
 }
 
 // รายการห้องเรียนของโรงเรียนบ้านหนองบัวโนนเมือง
@@ -25,6 +23,8 @@ model Classroom {
   name      String            // ชื่อเต็ม เช่น "ประถมศึกษาปีที่ 1"
   level     String            // ระดับ เช่น "อนุบาล", "ประถม", "มัธยมต้น"
   sortOrder Int      @default(0)
+  defaultMale   Int      @default(0)
+  defaultFemale Int      @default(0)
   records   AttendanceRecord[]
 
   @@index([level])
@@ -59,4 +59,26 @@ model AttendanceRecord {
   @@unique([date, classroomId])
   @@index([date])
   @@index([classroomId])
+}
+
+// บันทึกครูเวรประจำวัน
+model UserRole {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String?
+  role      String   @default("teacher")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model DailyLog {
+  id                   String    @id @default(cuid())
+  date                 String    @unique
+  content              String
+  recordedBy           String?
+  directorApprovedBy   String?
+  directorApprovedName String?
+  directorApprovedAt   DateTime?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
 }

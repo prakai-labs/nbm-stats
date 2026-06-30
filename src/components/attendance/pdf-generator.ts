@@ -528,7 +528,7 @@ function drawSummaryPage(doc: jsPDF, data: ReportData) {
   y += 70
 
   // ตารางเปรียบเทียบรายห้อง
-  const classroomRows = data.classroomSummary.map((c) => {
+  const classroomRows: Array<Array<string | { content: string; colSpan?: number; styles?: any }>> = data.classroomSummary.map((c) => {
     const rate = c.total > 0 ? (c.present / c.total) * 100 : 0
     return [
       `${c.code}`,

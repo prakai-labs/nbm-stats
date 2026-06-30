@@ -4,7 +4,7 @@ import * as React from 'react'
 import { Minus, Plus } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
-interface NumberInputProps extends Omit<React.ComponentProps<'input'>, 'type' | 'onChange'> {
+interface NumberInputProps extends Omit<React.ComponentProps<'input'>, 'type' | 'onChange' | 'size'> {
   /** ค่าปัจจุบัน */
   value: string | number
   /** เรียกเมื่อค่าเปลี่ยน — ส่ง string เพื่อรองรับช่องว่าง */

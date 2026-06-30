@@ -58,3 +58,6 @@ examples/
 # Backup files
 *.tar.gz
 *.zip
+
+.vercel
+.env*
