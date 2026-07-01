@@ -14,13 +14,22 @@ export async function GET(req: NextRequest) {
       targetDate = bangkok.toISOString().slice(0, 10)
     }
 
+    const classrooms = await db.classroom.findMany()
+    const grandTotal = classrooms.reduce((s, c) => s + c.defaultMale + c.defaultFemale, 0)
+
     const records = await db.attendanceRecord.findMany({
       where: { date: targetDate },
       include: { classroom: true },
     })
 
+    const recordedClassroomIds = new Set(records.map(r => r.classroomId))
+    const unrecordedClassrooms = classrooms.filter(c => !recordedClassroomIds.has(c.id))
+    const unreportedCount = unrecordedClassrooms.reduce((s, c) => s + c.defaultMale + c.defaultFemale, 0)
+
     const summary = {
       date: targetDate,
+      grandTotal,
+      unreportedCount,
       totalMale: records.reduce((s, r) => s + r.totalMale, 0),
       totalFemale: records.reduce((s, r) => s + r.totalFemale, 0),
       totalStudents: records.reduce((s, r) => s + r.totalMale + r.totalFemale, 0),

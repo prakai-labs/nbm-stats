@@ -99,6 +99,8 @@ export default function Home() {
     leaveMale: 0, leaveFemale: 0, leave: 0,
     absentMale: 0, absentFemale: 0, absent: 0,
     classroomCount: 0,
+    grandTotal: 0,
+    unreportedCount: 0,
   }
 
   const currentUserId = selfSocketId
@@ -191,6 +193,8 @@ export default function Home() {
           <TabsContent value="today" className="space-y-6">
             <SummaryCards
               date={date}
+              grandTotal={summary.grandTotal}
+              unreportedCount={summary.unreportedCount}
               totalMale={summary.totalMale}
               totalFemale={summary.totalFemale}
               totalStudents={summary.totalStudents}
