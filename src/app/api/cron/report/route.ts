@@ -41,18 +41,34 @@ export async function GET(req: NextRequest) {
     const [year, month, day] = date.split('-')
     const formattedDate = `${parseInt(day)}/${parseInt(month)}/${year}`
 
-    const recordedClassroomIds = new Set(records.map(r => r.classroomId))
-    const unrecordedClassrooms = classrooms.filter(c => !recordedClassroomIds.has(c.id))
-
-    let missingText = ''
-    if (unrecordedClassrooms.length > 0) {
-      const names = unrecordedClassrooms.map(c => c.name).join(', ')
-      missingText = `\n\n⚠️ ชั้นที่ยังไม่ได้บันทึกสถิติ ได้แก่ ${names}`
-    } else {
-      missingText = `\n\n✨ ทุกชั้นรายงานเรียบร้อย ขอบคุณค่ะ`
+    let grandTotal = 0
+    for (const c of classrooms) {
+      grandTotal += c.defaultMale + c.defaultFemale
     }
 
-    const text = `📊 สรุปภาพรวมสถิติประจำวันที่ ${formattedDate}\n\nนักเรียนทั้งหมด: ${total} คน\n✅ มาเรียน: ${present} คน (${percent}%)\n😷 ป่วย: ${sick} คน\n📝 ลา: ${leave} คน\n❌ ขาด: ${absent} คน${missingText}`
+    const recordedClassroomIds = new Set(records.map(r => r.classroomId))
+    const unrecordedClassrooms = classrooms.filter(c => !recordedClassroomIds.has(c.id))
+    
+    let unreportedCount = 0
+    for (const c of unrecordedClassrooms) {
+      unreportedCount += c.defaultMale + c.defaultFemale
+    }
+
+    let missingText = ''
+    let reportStatusText = ''
+    let percentText = percent + '%'
+    
+    if (unrecordedClassrooms.length > 0) {
+      const codes = unrecordedClassrooms.map(c => c.code).join(', ')
+      missingText = `\n\n⚠️ ชั้นที่ยังไม่ได้บันทึกสถิติ ได้แก่ ${codes}`
+      reportStatusText = `\n📝 รายงานแล้ว: ${total} คน (ยังไม่รายงาน ${unreportedCount} คน)\n`
+      percentText = percent + '% จากที่รายงาน'
+    } else {
+      missingText = `\n\n✨ ทุกชั้นรายงานเรียบร้อย ขอบคุณค่ะ`
+      reportStatusText = `\n📝 รายงานครบถ้วนแล้ว\n`
+    }
+
+    const text = `📊 สรุปภาพรวมสถิติประจำวันที่ ${formattedDate}\n\nนักเรียนทั้งหมด: ${grandTotal} คน${reportStatusText}\n✅ มาเรียน: ${present} คน (${percentText})\n😷 ป่วย: ${sick} คน\n📝 ลา: ${leave} คน\n❌ ขาด: ${absent} คน${missingText}`
 
     await pushMessage(groupId, [
       {
