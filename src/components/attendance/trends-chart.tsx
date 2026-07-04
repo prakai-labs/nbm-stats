@@ -51,7 +51,9 @@ export function TrendsChart({ days = 7 }: TrendsChartProps) {
 
   const trend: TrendPoint[] = data?.trend ?? []
 
-  const chartData = trend.map((t) => ({
+  const chartData = trend
+    .filter((t) => t.total > 0)
+    .map((t) => ({
     date: formatThaiDateShort(t.date),
     'ชายมา': t.presentMale,
     'หญิงมา': t.presentFemale,

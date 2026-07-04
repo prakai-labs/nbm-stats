@@ -25,6 +25,8 @@ interface NumberInputProps extends Omit<React.ComponentProps<'input'>, 'type' | 
   disabled?: boolean
   /** placeholder */
   placeholder?: string
+  /** ซ่อนปุ่ม +/- */
+  hideButtons?: boolean
 }
 
 /**
@@ -44,6 +46,7 @@ export function NumberInput({
   size = 'sm',
   disabled = false,
   placeholder = '0',
+  hideButtons = false,
   ...props
 }: NumberInputProps) {
   const sanitize = (v: string) => v.replace(/[^0-9]/g, '').slice(0, maxLength)
@@ -68,22 +71,24 @@ export function NumberInput({
 
   return (
     <div className="inline-flex items-center gap-0.5">
-      <button
-        type="button"
-        onClick={decrement}
-        disabled={disabled || currentNum <= min}
-        className={cn(
-          'flex shrink-0 items-center justify-center rounded-l-md border border-r-0 border-slate-300 bg-slate-50 text-slate-600 transition-colors',
-          'hover:bg-slate-100 hover:text-slate-800',
-          'active:bg-slate-200',
-          'disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-slate-50',
-          btnSize
-        )}
-        aria-label="ลดจำนวน"
-        tabIndex={-1}
-      >
-        <Minus className="h-3 w-3" />
-      </button>
+      {!hideButtons && (
+        <button
+          type="button"
+          onClick={decrement}
+          disabled={disabled || currentNum <= min}
+          className={cn(
+            'flex shrink-0 items-center justify-center rounded-l-md border border-r-0 border-slate-300 bg-slate-50 text-slate-600 transition-colors',
+            'hover:bg-slate-100 hover:text-slate-800',
+            'active:bg-slate-200',
+            'disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-slate-50',
+            btnSize
+          )}
+          aria-label="ลดจำนวน"
+          tabIndex={-1}
+        >
+          <Minus className="h-3 w-3" />
+        </button>
+      )}
       <input
         type="text"
         inputMode="numeric"
@@ -97,27 +102,30 @@ export function NumberInput({
           'focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100',
           'disabled:cursor-not-allowed disabled:bg-slate-50 disabled:opacity-60',
           inputSize,
-          colorClassName
+          colorClassName,
+          hideButtons && 'rounded-md border-x' // Add border-x and rounded-md when buttons are hidden
         )}
         style={{ width: `${inputWidth}px` }}
         {...props}
       />
-      <button
-        type="button"
-        onClick={increment}
-        disabled={disabled || currentNum >= max}
-        className={cn(
-          'flex shrink-0 items-center justify-center rounded-r-md border border-l-0 border-slate-300 bg-slate-50 text-slate-600 transition-colors',
-          'hover:bg-slate-100 hover:text-slate-800',
-          'active:bg-slate-200',
-          'disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-slate-50',
-          btnSize
-        )}
-        aria-label="เพิ่มจำนวน"
-        tabIndex={-1}
-      >
-        <Plus className="h-3 w-3" />
-      </button>
+      {!hideButtons && (
+        <button
+          type="button"
+          onClick={increment}
+          disabled={disabled || currentNum >= max}
+          className={cn(
+            'flex shrink-0 items-center justify-center rounded-r-md border border-l-0 border-slate-300 bg-slate-50 text-slate-600 transition-colors',
+            'hover:bg-slate-100 hover:text-slate-800',
+            'active:bg-slate-200',
+            'disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-slate-50',
+            btnSize
+          )}
+          aria-label="เพิ่มจำนวน"
+          tabIndex={-1}
+        >
+          <Plus className="h-3 w-3" />
+        </button>
+      )}
     </div>
   )
 }

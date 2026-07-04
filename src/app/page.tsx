@@ -233,6 +233,7 @@ export default function Home() {
               onStartEditing={startEditing}
               onStopEditing={stopEditing}
               onSaved={broadcastSaved}
+              isAdmin={!!(session?.user as any)?.isAdmin}
             />
 
             <DailyLog date={date} teacherName={teacherName} />

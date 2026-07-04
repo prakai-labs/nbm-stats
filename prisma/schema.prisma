@@ -1,12 +1,18 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
+// Prisma schema สำหรับ PostgreSQL (Vercel Postgres, Supabase, Neon)
+// ใช้สำหรับ deploy บน Vercel หรือ platform ที่รองรับ Postgres แบบ persistent
+//
+// วิธีใช้:
+// 1. ตั้งค่า DATABASE_URL เป็น connection string ของ Postgres
+//    เช่น postgresql://user:pass@host:5432/dbname?sslmode=require
+// 2. รัน: bunx prisma db push (เพื่อสร้างตารางใน Postgres)
+// 3. รัน: bun run scripts/migrate-sqlite-to-postgres.ts (เพื่อย้ายข้อมูลเดิม)
 
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
@@ -20,17 +26,19 @@ model Classroom {
   defaultMale   Int      @default(0)
   defaultFemale Int      @default(0)
   records   AttendanceRecord[]
+
+  @@index([level])
 }
 
 // บันทึกสถิตินักเรียนรายวัน แยกตามห้องเรียน พร้อมแยกชาย-หญิงทุกสถานะ
 model AttendanceRecord {
   id            String   @id @default(cuid())
-  date          String             // YYYY-MM-DD (รองรับ timezone ไทย)
+  date          String             // YYYY-MM-DD
   classroomId   String
-  classroom     Classroom @relation(fields: [classroomId], references: [id])
+  classroom     Classroom @relation(fields: [classroomId], references: [id], onDelete: Cascade)
   // จำนวนนักเรียนทั้งหมด
-  totalMale     Int      @default(0) // จำนวนนักเรียนชายทั้งหมดของห้อง
-  totalFemale   Int      @default(0) // จำนวนนักเรียนหญิงทั้งหมดของห้อง
+  totalMale     Int      @default(0)
+  totalFemale   Int      @default(0)
   // ป่วย (แยกชาย/หญิง)
   sickMale      Int      @default(0)
   sickFemale    Int      @default(0)
@@ -40,29 +48,29 @@ model AttendanceRecord {
   // ขาด (แยกชาย/หญิง)
   absentMale    Int      @default(0)
   absentFemale  Int      @default(0)
-  // มา (คำนวณอัตโนมัติ = ชาย/หญิง ทั้งหมด - ป่วย - ลา - ขาด)
+  // มา (คำนวณอัตโนมัติ)
   presentMale   Int      @default(0)
   presentFemale Int      @default(0)
-  note          String?             // หมายเหตุ เช่น กิจกรรมพิเศษ
-  recordedBy    String?             // ชื่อผู้บันทึก (คุณครู)
+  note          String?
+  recordedBy    String?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
   @@unique([date, classroomId])
   @@index([date])
+  @@index([classroomId])
 }
 
-// จัดการบทบาทผู้ใช้ (admin/ผู้อำนวยการ/ครู)
+// บันทึกครูเวรประจำวัน
 model UserRole {
   id        String   @id @default(cuid())
   email     String   @unique
   name      String?
-  role      String   @default("teacher") // admin, director, teacher
+  role      String   @default("teacher")
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
 
-// บันทึกครูเวรประจำวัน
 model DailyLog {
   id                   String    @id @default(cuid())
   date                 String    @unique

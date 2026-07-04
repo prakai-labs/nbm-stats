@@ -63,6 +63,7 @@ interface AttendanceFormProps {
   onStartEditing: (date: string, classroomId: string) => void
   onStopEditing: (date: string, classroomId: string) => void
   onSaved: (date: string, classroomId: string) => void
+  isAdmin?: boolean
 }
 
 interface RowState {
@@ -182,6 +183,7 @@ export function AttendanceForm({
   onStartEditing,
   onStopEditing,
   onSaved,
+  isAdmin,
 }: AttendanceFormProps) {
   const queryClient = useQueryClient()
   const todayStr = todayBangkok()
@@ -502,6 +504,7 @@ export function AttendanceForm({
                   resetRow={resetRow}
                   slotKey={slotKey}
                   currentUserId={currentUserId}
+                  isAdmin={isAdmin}
                 />
               ))}
               {classrooms.length === 0 && (
@@ -565,6 +568,7 @@ interface ClassroomGroupRowsProps {
   resetRow: (classroomId: string) => void
   slotKey: (cid: string) => EditingSlot | undefined
   currentUserId: string | null
+  isAdmin?: boolean
 }
 
 function ClassroomGroupRows({
@@ -579,6 +583,7 @@ function ClassroomGroupRows({
   resetRow,
   slotKey: getSlot,
   currentUserId,
+  isAdmin,
 }: ClassroomGroupRowsProps) {
   const groupTotals = useMemo(() => {
     let male = 0, female = 0
@@ -697,12 +702,12 @@ function ClassroomGroupRows({
             <td className="px-1 py-2 text-center bg-slate-50/50 border-l-2 border-slate-200">
               <NumberInput value={r.totalMale} onValueChange={(v) => updateField(c.id, 'totalMale', v)}
                 onFocus={() => handleFieldFocus(c.id)} onBlur={() => handleFieldBlur(c.id)}
-                disabled={!!lockedByOther} colorClassName="text-sky-800" inputWidth={42} />
+                disabled={!isAdmin || !!lockedByOther} hideButtons={true} colorClassName="text-sky-800" inputWidth={42} />
             </td>
             <td className="px-1 py-2 text-center bg-slate-50/50">
               <NumberInput value={r.totalFemale} onValueChange={(v) => updateField(c.id, 'totalFemale', v)}
                 onFocus={() => handleFieldFocus(c.id)} onBlur={() => handleFieldBlur(c.id)}
-                disabled={!!lockedByOther} colorClassName="text-pink-800" inputWidth={42} />
+                disabled={!isAdmin || !!lockedByOther} hideButtons={true} colorClassName="text-pink-800" inputWidth={42} />
             </td>
             <td className="px-1 py-2 text-center bg-slate-50/50 border-r-2 border-slate-200">
               <div className={sumBoxClass('border-slate-300', 'text-slate-800', 'bg-slate-100')}>{calc.total}</div>
