@@ -113,8 +113,7 @@ export default function AdminPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           academicYear: parseInt(academicYear, 10),
-          term1: t1,
-          term2: t2
+          ...(termIndex === 1 ? { term1: t1 } : { term2: t2 })
         }),
       })
       if (!res.ok) throw new Error()

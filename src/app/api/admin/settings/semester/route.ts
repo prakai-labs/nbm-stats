@@ -17,7 +17,23 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Academic year is required' }, { status: 400 })
     }
 
-    const valueStr = JSON.stringify({ academicYear, term1, term2 })
+    let existingData: any = {}
+    try {
+      const existingSetting = await db.systemSetting.findUnique({ where: { key: 'semester_settings' } })
+      if (existingSetting) {
+        existingData = JSON.parse(existingSetting.value)
+      }
+    } catch (e) {
+      // Ignore
+    }
+
+    const mergedData = {
+      academicYear,
+      term1: term1 !== undefined ? term1 : existingData.term1,
+      term2: term2 !== undefined ? term2 : existingData.term2,
+    }
+
+    const valueStr = JSON.stringify(mergedData)
 
     const setting = await db.systemSetting.upsert({
       where: { key: 'semester_settings' },
