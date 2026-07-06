@@ -160,16 +160,7 @@ export function SummaryCards({
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center gap-2 justify-end">
-        <Button size="sm" variant="outline" onClick={handleRemind} disabled={isReminding} className="h-8 gap-1.5 border-orange-200 text-orange-700 bg-orange-50 hover:bg-orange-100">
-          <BellRing className={`h-3.5 w-3.5 ${isReminding ? 'animate-bounce' : ''}`} />
-          แจ้งเตือนการบันทึกสถิติ
-        </Button>
-        <Button size="sm" variant="default" onClick={handleReport} disabled={isReporting} className="h-8 gap-1.5 bg-[#00B900] hover:bg-[#009900] text-white">
-          <Send className={`h-3.5 w-3.5 ${isReporting ? 'animate-pulse' : ''}`} />
-          รายงานสถิติประจำวัน
-        </Button>
-      </div>
+
 
       {/* 4 main cards */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">

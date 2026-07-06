@@ -59,6 +59,48 @@ export default function Home() {
     }
   }, [activeTab])
 
+  const { data: semesterSettings } = useQuery({
+    queryKey: ['semesterSettings'],
+    queryFn: async () => {
+      const res = await fetch('/api/settings/semester')
+      if (!res.ok) return null
+      return res.json()
+    }
+  })
+
+  const { semesterDisplay, isHoliday } = useMemo(() => {
+    if (!semesterSettings?.academicYear) return { semesterDisplay: '', isHoliday: false }
+    const current = new Date(date)
+    current.setHours(0,0,0,0)
+
+    let activeTerm = ''
+    if (semesterSettings.term1?.start && semesterSettings.term1?.end) {
+      const start = new Date(semesterSettings.term1.start)
+      const end = new Date(semesterSettings.term1.end)
+      start.setHours(0,0,0,0)
+      end.setHours(23,59,59,999)
+      if (current >= start && current <= end) activeTerm = '1'
+    }
+    if (!activeTerm && semesterSettings.term2?.start && semesterSettings.term2?.end) {
+      const start = new Date(semesterSettings.term2.start)
+      const end = new Date(semesterSettings.term2.end)
+      start.setHours(0,0,0,0)
+      end.setHours(23,59,59,999)
+      if (current >= start && current <= end) activeTerm = '2'
+    }
+
+    if (activeTerm) {
+      return {
+        semesterDisplay: `ภาคเรียนที่ ${activeTerm} ปีการศึกษา ${semesterSettings.academicYear}`,
+        isHoliday: false
+      }
+    }
+    return {
+      semesterDisplay: `ปิดเทอม ปีการศึกษา ${semesterSettings.academicYear}`,
+      isHoliday: true
+    }
+  }, [date, semesterSettings])
+
   const {
     isConnected,
     selfSocketId,
@@ -151,17 +193,15 @@ export default function Home() {
           }}
         />
         <div className="relative mx-auto flex max-w-7xl flex-col gap-2 px-4 py-8 sm:px-6 sm:py-10">
-          <div className="inline-flex w-fit items-center gap-2 rounded-full bg-white/15 px-3 py-1 text-xs font-medium ring-1 ring-white/20 backdrop-blur">
-            <Sparkles className="h-3 w-3" />
-            PWA · บันทึกอัตโนมัติ · เรียลไทม์ · ปฏิทินรายเดือน · ล็อกอินด้วย Google
-          </div>
           <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">
             สถิตินักเรียนประจำวัน
           </h2>
-          <p className="max-w-2xl text-sm text-emerald-50/90 sm:text-base">
-            กรอกจำนวนนักเรียนชาย/หญิง และจำนวนที่ป่วย/ลา/ขาด ระบบจะคำนวณจำนวนที่มาให้เอง
-            ติดตั้งเป็นแอปบนมือถือได้ · ครูหลายท่านบันทึกพร้อมกัน · ดูภาพรวมได้ทั้งรายวันและรายเดือน
-          </p>
+          {semesterDisplay && (
+            <div className="text-sm font-medium text-emerald-100/90 bg-black/10 w-fit px-3 py-1 rounded-full backdrop-blur-sm">
+              {semesterDisplay}
+            </div>
+          )}
+
           <div className="text-xs text-emerald-100/80">
             ล็อกอินในชื่อ: <strong>{teacherName}</strong>
             {teacherEmail && teacherEmail !== teacherName && (
@@ -221,22 +261,32 @@ export default function Home() {
               </div>
             )}
 
-            <AttendanceForm
-              date={date}
-              onDateChange={setDate}
-              teacherName={teacherName}
-              onTeacherNameChange={() => {
-                /* ไม่อนุญาตให้แก้ชื่อ manual — ใช้ชื่อจาก Google เท่านั้น */
-              }}
-              editingSlots={editingSlots}
-              currentUserId={currentUserId}
-              onStartEditing={startEditing}
-              onStopEditing={stopEditing}
-              onSaved={broadcastSaved}
-              isAdmin={!!(session?.user as any)?.isAdmin}
-            />
+            {isHoliday ? (
+              <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-slate-300 bg-slate-50 py-12 text-center text-slate-500">
+                <AlertTriangle className="mb-2 h-8 w-8 text-amber-500" />
+                <h3 className="text-lg font-semibold text-slate-700">ขณะนี้อยู่ในช่วงปิดเทอม</h3>
+                <p className="text-sm">ไม่สามารถบันทึกสถิติได้ในขณะนี้</p>
+              </div>
+            ) : (
+              <>
+                <AttendanceForm
+                  date={date}
+                  onDateChange={setDate}
+                  teacherName={teacherName}
+                  onTeacherNameChange={() => {
+                    /* ไม่อนุญาตให้แก้ชื่อ manual — ใช้ชื่อจาก Google เท่านั้น */
+                  }}
+                  editingSlots={editingSlots}
+                  currentUserId={currentUserId}
+                  onStartEditing={startEditing}
+                  onStopEditing={stopEditing}
+                  onSaved={broadcastSaved}
+                  isAdmin={!!(session?.user as any)?.isAdmin}
+                />
 
-            <DailyLog date={date} teacherName={teacherName} />
+                <DailyLog date={date} teacherName={teacherName} />
+              </>
+            )}
 
             <div className="grid grid-cols-1 gap-6 lg:grid-cols-5">
               <div className="lg:col-span-3">

@@ -14,6 +14,42 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ message: 'Skipped (Holiday)' }, { status: 200 })
   }
 
+  // Check if it's school holiday (outside term 1 and term 2)
+  try {
+    const setting = await db.systemSetting.findUnique({
+      where: { key: 'semester_settings' },
+    })
+    if (setting) {
+      const data = JSON.parse(setting.value)
+      const current = new Date(date)
+      current.setHours(0,0,0,0)
+      
+      let isSchoolHoliday = true
+      
+      if (data.term1?.start && data.term1?.end) {
+        const start = new Date(data.term1.start)
+        const end = new Date(data.term1.end)
+        start.setHours(0,0,0,0)
+        end.setHours(23,59,59,999)
+        if (current >= start && current <= end) isSchoolHoliday = false
+      }
+      
+      if (data.term2?.start && data.term2?.end) {
+        const start = new Date(data.term2.start)
+        const end = new Date(data.term2.end)
+        start.setHours(0,0,0,0)
+        end.setHours(23,59,59,999)
+        if (current >= start && current <= end) isSchoolHoliday = false
+      }
+      
+      if (isSchoolHoliday) {
+        return NextResponse.json({ message: 'Skipped (School Holiday)' }, { status: 200 })
+      }
+    }
+  } catch (err) {
+    console.error('Error checking semester settings in cron:', err)
+  }
+
   const groupId = process.env.LINE_GROUP_ID
   if (!groupId) {
     return NextResponse.json({ error: 'LINE_GROUP_ID not configured' }, { status: 500 })
