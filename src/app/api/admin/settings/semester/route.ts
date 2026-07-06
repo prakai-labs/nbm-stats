@@ -13,8 +13,8 @@ export async function POST(req: Request) {
     const body = await req.json()
     const { academicYear, term1, term2 } = body
 
-    if (!academicYear || !term1?.start || !term1?.end || !term2?.start || !term2?.end) {
-      return NextResponse.json({ error: 'Invalid data' }, { status: 400 })
+    if (!academicYear) {
+      return NextResponse.json({ error: 'Academic year is required' }, { status: 400 })
     }
 
     const valueStr = JSON.stringify({ academicYear, term1, term2 })
