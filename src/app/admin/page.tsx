@@ -219,7 +219,6 @@ export default function AdminPage() {
                   <Input 
                     id="academicYear" 
                     type="number" 
-                    placeholder="เช่น 2569" 
                     value={academicYear}
                     onChange={(e) => setAcademicYear(e.target.value)}
                   />
