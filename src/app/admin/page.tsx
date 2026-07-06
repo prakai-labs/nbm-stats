@@ -88,11 +88,24 @@ export default function AdminPage() {
     } catch { toast.error('ลบไม่สำเร็จ') }
   }
 
-  const saveSettings = async () => {
+  const saveSettings = async (termIndex: 1 | 2) => {
     if (!academicYear) {
       toast.error('กรุณากรอกปีการศึกษา')
       return
     }
+
+    const t1 = (term1Start && term1End) ? { start: term1Start, end: term1End } : null;
+    const t2 = (term2Start && term2End) ? { start: term2Start, end: term2End } : null;
+
+    if (termIndex === 1 && !t1) {
+      toast.error('กรุณากรอกวันที่ของภาคเรียนที่ 1 ให้ครบทั้งวันเปิดและวันปิด')
+      return
+    }
+    if (termIndex === 2 && !t2) {
+      toast.error('กรุณากรอกวันที่ของภาคเรียนที่ 2 ให้ครบทั้งวันเปิดและวันปิด')
+      return
+    }
+
     setSavingSettings(true)
     try {
       const res = await fetch('/api/admin/settings/semester', {
@@ -100,12 +113,12 @@ export default function AdminPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           academicYear: parseInt(academicYear, 10),
-          term1: (term1Start && term1End) ? { start: term1Start, end: term1End } : null,
-          term2: (term2Start && term2End) ? { start: term2Start, end: term2End } : null
+          term1: t1,
+          term2: t2
         }),
       })
       if (!res.ok) throw new Error()
-      toast.success('บันทึกการตั้งค่าเรียบร้อยแล้ว')
+      toast.success(`บันทึกการตั้งค่าภาคเรียนที่ ${termIndex} เรียบร้อยแล้ว`)
     } catch { 
       toast.error('บันทึกไม่สำเร็จ') 
     } finally {
@@ -234,6 +247,17 @@ export default function AdminPage() {
                         onChange={(e) => setTerm1End(e.target.value)}
                       />
                     </div>
+                    <div className="pt-2">
+                      <Button 
+                        className="w-full" 
+                        variant="secondary"
+                        onClick={() => saveSettings(1)}
+                        disabled={savingSettings}
+                      >
+                        {savingSettings ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4 text-emerald-600" />}
+                        บันทึกภาคเรียนที่ 1
+                      </Button>
+                    </div>
                   </div>
 
                   <div className="space-y-4">
@@ -256,17 +280,19 @@ export default function AdminPage() {
                         onChange={(e) => setTerm2End(e.target.value)}
                       />
                     </div>
+                    <div className="pt-2">
+                      <Button 
+                        className="w-full" 
+                        variant="secondary"
+                        onClick={() => saveSettings(2)}
+                        disabled={savingSettings}
+                      >
+                        {savingSettings ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4 text-emerald-600" />}
+                        บันทึกภาคเรียนที่ 2
+                      </Button>
+                    </div>
                   </div>
                 </div>
-
-                <Button 
-                  className="w-full mt-4" 
-                  onClick={saveSettings}
-                  disabled={savingSettings}
-                >
-                  {savingSettings ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                  บันทึกการตั้งค่า
-                </Button>
               </CardContent>
             </Card>
           </TabsContent>
