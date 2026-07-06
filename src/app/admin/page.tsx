@@ -89,8 +89,8 @@ export default function AdminPage() {
   }
 
   const saveSettings = async () => {
-    if (!academicYear || !term1Start || !term1End || !term2Start || !term2End) {
-      toast.error('กรุณากรอกข้อมูลให้ครบถ้วน')
+    if (!academicYear) {
+      toast.error('กรุณากรอกปีการศึกษา')
       return
     }
     setSavingSettings(true)
@@ -100,8 +100,8 @@ export default function AdminPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           academicYear: parseInt(academicYear, 10),
-          term1: { start: term1Start, end: term1End },
-          term2: { start: term2Start, end: term2End }
+          term1: (term1Start && term1End) ? { start: term1Start, end: term1End } : null,
+          term2: (term2Start && term2End) ? { start: term2Start, end: term2End } : null
         }),
       })
       if (!res.ok) throw new Error()
