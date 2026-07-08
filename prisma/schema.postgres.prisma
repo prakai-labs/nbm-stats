@@ -82,3 +82,11 @@ model DailyLog {
   createdAt            DateTime  @default(now())
   updatedAt            DateTime  @updatedAt
 }
+
+// ตั้งค่าระบบ เช่น วันเปิดปิดภาคเรียน
+model SystemSetting {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  value     String
+  updatedAt DateTime @updatedAt
+}

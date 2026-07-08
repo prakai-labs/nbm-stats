@@ -17,15 +17,15 @@ export function SiteHeader({ isConnected, onlineCount, todayStr }: SiteHeaderPro
   return (
     <header className="sticky top-0 z-40 border-b border-emerald-100/80 bg-white/85 backdrop-blur-md">
       <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-3 sm:px-6">
-        <div className="flex items-center gap-3">
-          <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-lg shadow-emerald-500/25">
-            <GraduationCap className="h-6 w-6" />
+        <div className="flex flex-1 min-w-0 items-center gap-2 sm:gap-3">
+          <div className="flex shrink-0 h-10 w-10 sm:h-11 sm:w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-lg shadow-emerald-500/25">
+            <GraduationCap className="h-5 w-5 sm:h-6 sm:w-6" />
           </div>
-          <div className="leading-tight">
-            <div className="text-[11px] font-medium uppercase tracking-wider text-emerald-700/80">
+          <div className="flex flex-col justify-center min-w-0">
+            <div className="truncate text-[10px] sm:text-[11px] font-medium tracking-wider text-emerald-700/80 mb-0.5">
               ระบบบันทึกสถิติประจำวัน
             </div>
-            <h1 className="text-base font-bold text-slate-800 sm:text-lg">
+            <h1 className="text-sm sm:text-base font-bold text-slate-800 leading-snug truncate sm:whitespace-normal sm:line-clamp-2">
               โรงเรียนบ้านหนองบัวโนนเมือง
             </h1>
           </div>
