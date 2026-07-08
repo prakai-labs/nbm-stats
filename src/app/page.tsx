@@ -73,15 +73,18 @@ export default function Home() {
     const current = new Date(date)
     current.setHours(0,0,0,0)
 
+    const hasTerm1 = semesterSettings.term1?.start && semesterSettings.term1?.end
+    const hasTerm2 = semesterSettings.term2?.start && semesterSettings.term2?.end
+
     let activeTerm = ''
-    if (semesterSettings.term1?.start && semesterSettings.term1?.end) {
+    if (hasTerm1) {
       const start = new Date(semesterSettings.term1.start)
       const end = new Date(semesterSettings.term1.end)
       start.setHours(0,0,0,0)
       end.setHours(23,59,59,999)
       if (current >= start && current <= end) activeTerm = '1'
     }
-    if (!activeTerm && semesterSettings.term2?.start && semesterSettings.term2?.end) {
+    if (!activeTerm && hasTerm2) {
       const start = new Date(semesterSettings.term2.start)
       const end = new Date(semesterSettings.term2.end)
       start.setHours(0,0,0,0)
@@ -95,9 +98,19 @@ export default function Home() {
         isHoliday: false
       }
     }
+
+    // Only consider it a holiday if at least one term is configured
+    if (hasTerm1 || hasTerm2) {
+      return {
+        semesterDisplay: `ปิดเทอม ปีการศึกษา ${semesterSettings.academicYear}`,
+        isHoliday: true
+      }
+    }
+
+    // No terms configured yet — just show academic year
     return {
-      semesterDisplay: `ปิดเทอม ปีการศึกษา ${semesterSettings.academicYear}`,
-      isHoliday: true
+      semesterDisplay: `ปีการศึกษา ${semesterSettings.academicYear}`,
+      isHoliday: false
     }
   }, [date, semesterSettings])
 

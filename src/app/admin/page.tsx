@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
-import { Shield, ArrowLeft, Save, Trash2, Loader2, Users, Settings } from 'lucide-react'
+import { Shield, ArrowLeft, Save, Trash2, Loader2, Users, Settings, Bell, BarChart3 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -29,7 +29,10 @@ export default function AdminPage() {
   const [term1End, setTerm1End] = useState('')
   const [term2Start, setTerm2Start] = useState('')
   const [term2End, setTerm2End] = useState('')
-  const [savingSettings, setSavingSettings] = useState(false)
+  const [savingTerm1, setSavingTerm1] = useState(false)
+  const [savingTerm2, setSavingTerm2] = useState(false)
+  const [sendingRemind, setSendingRemind] = useState(false)
+  const [sendingReport, setSendingReport] = useState(false)
 
   useEffect(() => {
     if (status === 'unauthenticated') { router.push('/login'); return }
@@ -54,11 +57,11 @@ export default function AdminPage() {
       const res = await fetch('/api/settings/semester')
       if (res.ok) {
         const data = await res.json()
-        setAcademicYear(data.academicYear?.toString() || '')
-        setTerm1Start(data.term1?.start || '')
-        setTerm1End(data.term1?.end || '')
-        setTerm2Start(data.term2?.start || '')
-        setTerm2End(data.term2?.end || '')
+        if (data.academicYear) setAcademicYear(data.academicYear.toString())
+        if (data.term1?.start) setTerm1Start(data.term1.start)
+        if (data.term1?.end) setTerm1End(data.term1.end)
+        if (data.term2?.start) setTerm2Start(data.term2.start)
+        if (data.term2?.end) setTerm2End(data.term2.end)
       }
     } catch {
       console.error('Failed to fetch settings')
@@ -88,40 +91,80 @@ export default function AdminPage() {
     } catch { toast.error('ลบไม่สำเร็จ') }
   }
 
-  const saveSettings = async (termIndex: 1 | 2) => {
+  const saveTerm = async (termIndex: 1 | 2) => {
     if (!academicYear) {
       toast.error('กรุณากรอกปีการศึกษา')
       return
     }
 
-    const t1 = (term1Start && term1End) ? { start: term1Start, end: term1End } : null;
-    const t2 = (term2Start && term2End) ? { start: term2Start, end: term2End } : null;
+    const start = termIndex === 1 ? term1Start : term2Start
+    const end = termIndex === 1 ? term1End : term2End
 
-    if (termIndex === 1 && !t1) {
-      toast.error('กรุณากรอกวันที่ของภาคเรียนที่ 1 ให้ครบทั้งวันเปิดและวันปิด')
-      return
-    }
-    if (termIndex === 2 && !t2) {
-      toast.error('กรุณากรอกวันที่ของภาคเรียนที่ 2 ให้ครบทั้งวันเปิดและวันปิด')
+    if (!start || !end) {
+      toast.error(`กรุณากรอกวันที่ของภาคเรียนที่ ${termIndex} ให้ครบทั้งวันเปิดและวันปิด`)
       return
     }
 
-    setSavingSettings(true)
+    const setSaving = termIndex === 1 ? setSavingTerm1 : setSavingTerm2
+    setSaving(true)
+
     try {
+      const termKey = termIndex === 1 ? 'term1' : 'term2'
       const res = await fetch('/api/admin/settings/semester', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           academicYear: parseInt(academicYear, 10),
-          ...(termIndex === 1 ? { term1: t1 } : { term2: t2 })
+          [termKey]: { start, end }
         }),
       })
-      if (!res.ok) throw new Error()
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}))
+        throw new Error(errData.error || 'Unknown error')
+      }
       toast.success(`บันทึกการตั้งค่าภาคเรียนที่ ${termIndex} เรียบร้อยแล้ว`)
-    } catch { 
-      toast.error('บันทึกไม่สำเร็จ') 
+    } catch (err: any) { 
+      toast.error(`บันทึกไม่สำเร็จ: ${err.message || 'เกิดข้อผิดพลาด'}`) 
     } finally {
-      setSavingSettings(false)
+      setSaving(false)
+    }
+  }
+
+  const handleRemind = async () => {
+    setSendingRemind(true)
+    try {
+      const res = await fetch('/api/cron/remind')
+      const data = await res.json()
+      if (data.success) {
+        toast.success('ส่งแจ้งเตือนการบันทึกสถิติเรียบร้อยแล้ว')
+      } else if (data.message) {
+        toast.info(`ข้ามการแจ้งเตือน: ${data.message}`)
+      } else {
+        toast.error(`แจ้งเตือนไม่สำเร็จ: ${data.error || 'ไม่ทราบสาเหตุ'}`)
+      }
+    } catch {
+      toast.error('เกิดข้อผิดพลาดในการส่งแจ้งเตือน')
+    } finally {
+      setSendingRemind(false)
+    }
+  }
+
+  const handleReport = async () => {
+    setSendingReport(true)
+    try {
+      const res = await fetch('/api/cron/report')
+      const data = await res.json()
+      if (data.success) {
+        toast.success('ส่งรายงานสถิติประจำวันเรียบร้อยแล้ว')
+      } else if (data.message) {
+        toast.info(`ข้ามการรายงาน: ${data.message}`)
+      } else {
+        toast.error(`รายงานไม่สำเร็จ: ${data.error || 'ไม่ทราบสาเหตุ'}`)
+      }
+    } catch {
+      toast.error('เกิดข้อผิดพลาดในการส่งรายงาน')
+    } finally {
+      setSendingReport(false)
     }
   }
 
@@ -204,13 +247,14 @@ export default function AdminPage() {
             </div>
           </TabsContent>
 
-          <TabsContent value="settings">
+          <TabsContent value="settings" className="space-y-6">
+            {/* ปีการศึกษาและภาคเรียน */}
             <Card>
               <CardHeader>
                 <CardTitle className="text-base">ปีการศึกษาและภาคเรียน</CardTitle>
                 <CardDescription>
                   กำหนดช่วงเวลาของภาคเรียน ระบบจะใช้วันที่ปัจจุบันเพื่อคำนวณภาคเรียนอัตโนมัติ 
-                  หากอยู่นอกช่วงเวลาทั้งสอง ระบบจะถือว่าเป็นช่วง "ปิดเทอม"
+                  หากอยู่นอกช่วงเวลาทั้งสอง ระบบจะถือว่าเป็นช่วง &quot;ปิดเทอม&quot;
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
@@ -224,8 +268,9 @@ export default function AdminPage() {
                   />
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t border-slate-100">
-                  <div className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-slate-100">
+                  {/* ภาคเรียนที่ 1 */}
+                  <div className="space-y-4 rounded-lg border border-slate-200 p-4">
                     <h3 className="font-medium text-sm text-slate-700">ภาคเรียนที่ 1</h3>
                     <div className="space-y-2">
                       <Label htmlFor="term1Start" className="text-xs text-slate-500">วันเปิดภาคเรียน</Label>
@@ -245,20 +290,18 @@ export default function AdminPage() {
                         onChange={(e) => setTerm1End(e.target.value)}
                       />
                     </div>
-                    <div className="pt-2">
-                      <Button 
-                        className="w-full" 
-                        variant="secondary"
-                        onClick={() => saveSettings(1)}
-                        disabled={savingSettings}
-                      >
-                        {savingSettings ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4 text-emerald-600" />}
-                        บันทึกภาคเรียนที่ 1
-                      </Button>
-                    </div>
+                    <Button 
+                      className="w-full" 
+                      onClick={() => saveTerm(1)}
+                      disabled={savingTerm1}
+                    >
+                      {savingTerm1 ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                      บันทึกภาคเรียนที่ 1
+                    </Button>
                   </div>
 
-                  <div className="space-y-4">
+                  {/* ภาคเรียนที่ 2 */}
+                  <div className="space-y-4 rounded-lg border border-slate-200 p-4">
                     <h3 className="font-medium text-sm text-slate-700">ภาคเรียนที่ 2</h3>
                     <div className="space-y-2">
                       <Label htmlFor="term2Start" className="text-xs text-slate-500">วันเปิดภาคเรียน</Label>
@@ -278,19 +321,46 @@ export default function AdminPage() {
                         onChange={(e) => setTerm2End(e.target.value)}
                       />
                     </div>
-                    <div className="pt-2">
-                      <Button 
-                        className="w-full" 
-                        variant="secondary"
-                        onClick={() => saveSettings(2)}
-                        disabled={savingSettings}
-                      >
-                        {savingSettings ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4 text-emerald-600" />}
-                        บันทึกภาคเรียนที่ 2
-                      </Button>
-                    </div>
+                    <Button 
+                      className="w-full" 
+                      onClick={() => saveTerm(2)}
+                      disabled={savingTerm2}
+                    >
+                      {savingTerm2 ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                      บันทึกภาคเรียนที่ 2
+                    </Button>
                   </div>
                 </div>
+              </CardContent>
+            </Card>
+
+            {/* แจ้งเตือน LINE */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">แจ้งเตือน LINE</CardTitle>
+                <CardDescription>
+                  ส่งแจ้งเตือนหรือรายงานสถิติไปยังกลุ่มไลน์ด้วยตนเอง (ใช้ในกรณีที่ระบบอัตโนมัติไม่ทำงาน)
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <Button
+                  variant="outline"
+                  onClick={handleRemind}
+                  disabled={sendingRemind}
+                  className="h-12 gap-2 border-orange-200 text-orange-700 bg-orange-50 hover:bg-orange-100"
+                >
+                  {sendingRemind ? <Loader2 className="h-4 w-4 animate-spin" /> : <Bell className="h-4 w-4" />}
+                  แจ้งเตือนการบันทึกสถิติ
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={handleReport}
+                  disabled={sendingReport}
+                  className="h-12 gap-2 border-blue-200 text-blue-700 bg-blue-50 hover:bg-blue-100"
+                >
+                  {sendingReport ? <Loader2 className="h-4 w-4 animate-spin" /> : <BarChart3 className="h-4 w-4" />}
+                  รายงานสถิติประจำวัน
+                </Button>
               </CardContent>
             </Card>
           </TabsContent>
