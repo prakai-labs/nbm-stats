@@ -26,7 +26,7 @@ export async function pushMessage(to: string, messages: any[]) {
   const CHANNEL_ACCESS_TOKEN = process.env.LINE_CHANNEL_ACCESS_TOKEN
   if (!CHANNEL_ACCESS_TOKEN) {
     console.error('No LINE_CHANNEL_ACCESS_TOKEN found')
-    return
+    throw new Error('LINE_CHANNEL_ACCESS_TOKEN is missing')
   }
   
   const res = await fetch('https://api.line.me/v2/bot/message/push', {
@@ -42,6 +42,8 @@ export async function pushMessage(to: string, messages: any[]) {
   })
   
   if (!res.ok) {
-    console.error('Failed to push message:', await res.text())
+    const errorText = await res.text()
+    console.error('Failed to push message:', errorText)
+    throw new Error(`LINE API Error: ${res.status} ${errorText}`)
   }
 }

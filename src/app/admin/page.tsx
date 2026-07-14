@@ -133,7 +133,7 @@ export default function AdminPage() {
   const handleRemind = async () => {
     setSendingRemind(true)
     try {
-      const res = await fetch('/api/cron/remind')
+      const res = await fetch('/api/cron/remind?force=true')
       const data = await res.json()
       if (data.success) {
         toast.success('ส่งแจ้งเตือนการบันทึกสถิติเรียบร้อยแล้ว')
@@ -152,7 +152,7 @@ export default function AdminPage() {
   const handleReport = async () => {
     setSendingReport(true)
     try {
-      const res = await fetch('/api/cron/report')
+      const res = await fetch('/api/cron/report?force=true')
       const data = await res.json()
       if (data.success) {
         toast.success('ส่งรายงานสถิติประจำวันเรียบร้อยแล้ว')

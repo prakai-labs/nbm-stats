@@ -1,16 +1,38 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/app/api/auth/[...nextauth]/route'
 import { pushMessage } from '@/lib/line-api'
 import { db } from '@/lib/db'
 import { isHoliday } from '@/lib/holidays'
 
 export async function GET(req: NextRequest) {
+  // 1. Verify CRON_SECRET or Admin Session
   const authHeader = req.headers.get('authorization')
-  if (authHeader !== `Bearer ${process.env.CRON_SECRET}` && process.env.NODE_ENV === 'production') {
+  let isAuthorized = false
+
+  if (process.env.CRON_SECRET && authHeader === `Bearer ${process.env.CRON_SECRET}`) {
+    isAuthorized = true
+  }
+
+  if (!isAuthorized && process.env.NODE_ENV === 'production') {
+    const session = await getServerSession(authOptions)
+    if (session?.user?.isAdmin) {
+      isAuthorized = true
+    }
+  } else if (process.env.NODE_ENV !== 'production') {
+    isAuthorized = true
+  }
+
+  if (!isAuthorized) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
   const date = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Bangkok' }) // YYYY-MM-DD
-  if (isHoliday(date)) {
+  
+  // Allow admin to bypass holiday check if they add ?force=true
+  const force = req.nextUrl.searchParams.get('force') === 'true'
+  
+  if (!force && isHoliday(date)) {
     return NextResponse.json({ message: 'Skipped (Holiday)' }, { status: 200 })
   }
 
@@ -120,8 +142,8 @@ export async function GET(req: NextRequest) {
       }
     ])
     return NextResponse.json({ success: true })
-  } catch (error) {
+  } catch (error: any) {
     console.error('Cron report error:', error)
-    return NextResponse.json({ error: 'Failed to send line notification' }, { status: 500 })
+    return NextResponse.json({ error: error.message || 'Failed to send line notification' }, { status: 500 })
   }
 }

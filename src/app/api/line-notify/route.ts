@@ -84,8 +84,8 @@ export async function POST(req: NextRequest) {
     }
 
     return NextResponse.json({ error: 'Invalid action' }, { status: 400 })
-  } catch (error) {
+  } catch (error: any) {
     console.error('Line notify error:', error)
-    return NextResponse.json({ error: 'Failed to send line notification' }, { status: 500 })
+    return NextResponse.json({ error: error.message || 'Failed to send line notification' }, { status: 500 })
   }
 }
