@@ -6,12 +6,8 @@
   "devCommand": "bun run dev",
   "crons": [
     {
-      "path": "/api/cron/remind",
-      "schedule": "0 1 * * 1-5"
-    },
-    {
       "path": "/api/cron/report",
-      "schedule": "0 7 * * 1-5"
+      "schedule": "0 8 * * 1-5"
     }
   ],
   "env": {
