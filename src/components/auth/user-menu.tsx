@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from 'react'
 import { useSession, signOut } from 'next-auth/react'
 import { LogOut, ChevronDown, User as UserIcon } from 'lucide-react'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { PwaPushSubscribe } from '@/components/pwa-push-subscribe'
 
 export function UserMenu() {
   const { data: session, status } = useSession()
@@ -74,6 +75,9 @@ export function UserMenu() {
                 <div className="truncate text-[11px] text-slate-500">{user.email}</div>
               </div>
             </div>
+          </div>
+          <div className="p-3 border-b border-slate-100">
+            <PwaPushSubscribe email={user.email || undefined} />
           </div>
           <button
             onClick={() => signOut({ callbackUrl: '/login' })}

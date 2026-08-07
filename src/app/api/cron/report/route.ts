@@ -135,12 +135,49 @@ export async function GET(req: NextRequest) {
 
     const text = `📊 สรุปภาพรวมสถิติประจำวันที่ ${formattedDate}\n\nนักเรียนทั้งหมด: ${grandTotal} คน${reportStatusText}\n✅ มาเรียน: ${present} คน (${percentText})\n😷 ป่วย: ${sick} คน\n📝 ลา: ${leave} คน\n❌ ขาด: ${absent} คน${missingText}`
 
+    // Send LINE Notification
     await pushMessage(groupId, [
       {
         type: 'text',
         text
       }
     ])
+
+    // Send Web Push Notifications
+    if (process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY) {
+      const webpush = require('web-push')
+      webpush.setVapidDetails(
+        'mailto:admin@nbm-stats.vercel.app',
+        process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY,
+        process.env.VAPID_PRIVATE_KEY
+      )
+
+      const payload = JSON.stringify({
+        title: 'สรุปสถิติประจำวัน',
+        body: `✅ มา: ${present} 😷 ป่วย: ${sick} 📝 ลา: ${leave} ❌ ขาด: ${absent}`,
+        url: '/'
+      })
+
+      const subscriptions = await db.pushSubscription.findMany()
+      const pushPromises = subscriptions.map(sub => 
+        webpush.sendNotification({
+          endpoint: sub.endpoint,
+          keys: {
+            p256dh: sub.p256dh,
+            auth: sub.auth
+          }
+        }, payload).catch(async (err: any) => {
+          if (err.statusCode === 404 || err.statusCode === 410) {
+            console.log('Subscription expired or removed. Deleting from DB: ', sub.endpoint)
+            await db.pushSubscription.delete({ where: { endpoint: sub.endpoint } })
+          } else {
+            console.error('Push error:', err)
+          }
+        })
+      )
+      await Promise.all(pushPromises)
+    }
+
     return NextResponse.json({ success: true })
   } catch (error: any) {
     console.error('Cron report error:', error)
