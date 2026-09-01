@@ -5,14 +5,13 @@ import { useQuery } from '@tanstack/react-query'
 import {
   GraduationCap, CalendarDays, Loader2, FileSpreadsheet,
   Users, CheckCircle2, Stethoscope, AlertCircle, Calendar,
-  ArrowRight, ExternalLink
+  ArrowRight, AlertTriangle, Check, PenSquare, Filter
 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { formatThaiDate, formatThaiDateShort, todayBangkok, formatNumber } from './utils'
 
 interface Classroom {
@@ -44,11 +43,21 @@ interface AttendanceRecord {
   updatedAt: string
 }
 
+interface HistoryEntry {
+  date: string
+  hasRecord: boolean
+  record: AttendanceRecord | null
+}
+
 interface HistoryResponse {
   classroom: Classroom
+  entries: HistoryEntry[]
   records: AttendanceRecord[]
+  unrecordedDates: string[]
   summary: {
+    totalSchoolDays: number
     recordedDays: number
+    unrecordedDays: number
     totalMale: number
     totalFemale: number
     totalStudents: number
@@ -72,8 +81,11 @@ interface ClassroomHistoryViewProps {
   onSelectDate?: (date: string) => void
 }
 
+type FilterStatus = 'all' | 'unrecorded' | 'recorded'
+
 export function ClassroomHistoryView({ onSelectDate }: ClassroomHistoryViewProps) {
   const today = useMemo(() => todayBangkok(), [])
+  const [filterStatus, setFilterStatus] = useState<FilterStatus>('all')
 
   // 1. Fetch Classrooms
   const { data: classroomsData, isLoading: loadingClassrooms } = useQuery<{ classrooms: Classroom[] }>({
@@ -88,7 +100,7 @@ export function ClassroomHistoryView({ onSelectDate }: ClassroomHistoryViewProps
   const classrooms = classroomsData?.classrooms ?? []
   const [selectedClassroomId, setSelectedClassroomId] = useState<string>('')
 
-  // Set default selected classroom to first classroom (e.g. อ.1 or ป.1)
+  // Set default selected classroom to first classroom
   useEffect(() => {
     if (!selectedClassroomId && classrooms.length > 0) {
       setSelectedClassroomId(classrooms[0].id)
@@ -154,7 +166,19 @@ export function ClassroomHistoryView({ onSelectDate }: ClassroomHistoryViewProps
   }, [classrooms, selectedClassroomId])
 
   const summary = data?.summary
-  const records = data?.records ?? []
+  const entries = data?.entries ?? []
+  const unrecordedDates = data?.unrecordedDates ?? []
+
+  // Filtered entries based on tab
+  const filteredEntries = useMemo(() => {
+    if (filterStatus === 'unrecorded') {
+      return entries.filter(e => !e.hasRecord)
+    }
+    if (filterStatus === 'recorded') {
+      return entries.filter(e => e.hasRecord)
+    }
+    return entries
+  }, [entries, filterStatus])
 
   const handleExportExcel = () => {
     if (!selectedClassroomId) return
@@ -319,6 +343,47 @@ export function ClassroomHistoryView({ onSelectDate }: ClassroomHistoryViewProps
         </CardContent>
       </Card>
 
+      {/* Unrecorded Days Alert Banner */}
+      {!isLoading && unrecordedDates.length > 0 && (
+        <div className="rounded-xl border border-amber-200 bg-gradient-to-r from-amber-50 to-orange-50 p-4 shadow-sm">
+          <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
+            <div className="flex items-start gap-3">
+              <div className="p-2 bg-amber-100 rounded-lg text-amber-700 shrink-0">
+                <AlertTriangle className="h-5 w-5" />
+              </div>
+              <div>
+                <h4 className="text-sm font-bold text-amber-900">
+                  พบวันที่ยังไม่ได้บันทึกสถิติ {unrecordedDates.length} วัน ({currentClassroom?.code})
+                </h4>
+                <p className="text-xs text-amber-700 mt-0.5">
+                  คลิกที่วันที่ด้านล่างเพื่อกระโดดไปบันทึกสถิติของวันนั้นได้ทันที:
+                </p>
+                <div className="flex flex-wrap gap-1.5 mt-2">
+                  {unrecordedDates.map((dateStr) => (
+                    <button
+                      key={dateStr}
+                      onClick={() => onSelectDate?.(dateStr)}
+                      className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded-md bg-white border border-amber-300 text-amber-900 hover:bg-amber-100 transition shadow-2xs"
+                    >
+                      <PenSquare className="h-3 w-3 text-amber-600" />
+                      <span>{formatThaiDateShort(dateStr)}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setFilterStatus(filterStatus === 'unrecorded' ? 'all' : 'unrecorded')}
+              className="text-xs border-amber-300 text-amber-800 hover:bg-amber-100 self-start sm:self-auto shrink-0"
+            >
+              {filterStatus === 'unrecorded' ? 'แสดงทั้งหมด' : 'กรองเฉพาะที่ยังไม่บันทึก'}
+            </Button>
+          </div>
+        </div>
+      )}
+
       {/* Loading & Error States */}
       {isLoading && (
         <Card className="border-slate-200 p-8 text-center shadow-sm">
@@ -341,12 +406,18 @@ export function ClassroomHistoryView({ onSelectDate }: ClassroomHistoryViewProps
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <Card className="border-0 bg-gradient-to-br from-slate-700 to-slate-900 p-4 text-white shadow-sm">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-medium text-slate-200 uppercase">วันที่บันทึกแล้ว</span>
+                <span className="text-xs font-medium text-slate-200 uppercase">สถานะการบันทึก</span>
                 <Calendar className="h-4 w-4 text-slate-300" />
               </div>
-              <div className="mt-2 text-2xl font-bold">{formatNumber(summary.recordedDays)} วัน</div>
-              <div className="mt-1 text-[11px] text-slate-300">
-                นักเรียนประจำชั้น: ชาย {currentClassroom.defaultMale} · หญิง {currentClassroom.defaultFemale} (รวม {currentClassroom.defaultMale + currentClassroom.defaultFemale})
+              <div className="mt-2 text-2xl font-bold">
+                {summary.recordedDays} / {summary.totalSchoolDays} วัน
+              </div>
+              <div className="mt-1 text-[11px] text-slate-300 flex items-center gap-1.5">
+                {summary.unrecordedDays > 0 ? (
+                  <span className="text-amber-300 font-semibold">⚠️ ยังไม่บันทึก {summary.unrecordedDays} วัน</span>
+                ) : (
+                  <span className="text-emerald-300 font-semibold">✨ บันทึกครบทุกวัน</span>
+                )}
               </div>
             </Card>
 
@@ -386,23 +457,53 @@ export function ClassroomHistoryView({ onSelectDate }: ClassroomHistoryViewProps
 
           {/* Table Card */}
           <Card className="border-emerald-100/80 shadow-sm overflow-hidden bg-white">
-            <CardHeader className="border-b border-slate-100 bg-slate-50/50 py-3.5 px-4 flex flex-row items-center justify-between">
+            <CardHeader className="border-b border-slate-100 bg-slate-50/50 py-3.5 px-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
                 <CardTitle className="text-sm font-bold text-slate-800 flex items-center gap-2">
                   <span>ประวัติรายวัน: {currentClassroom.name} ({currentClassroom.code})</span>
                   <Badge variant="outline" className="text-xs font-normal">
-                    {records.length} วัน
+                    {filteredEntries.length} รายการ
                   </Badge>
                 </CardTitle>
                 <CardDescription className="text-xs mt-0.5">
-                  คลิกที่แถวหรือปุ่มด้านขวา เพื่อเปิดดูหรือแก้ไขข้อมูลในหน้ารายวัน
+                  คลิกที่แถวหรือปุ่มด้านขวา เพื่อเปิดดูหรือบันทึกข้อมูลในหน้ารายวัน
                 </CardDescription>
+              </div>
+
+              {/* Filter Pills */}
+              <div className="flex items-center gap-1 bg-slate-200/70 p-0.5 rounded-lg text-xs self-start sm:self-auto">
+                <button
+                  onClick={() => setFilterStatus('all')}
+                  className={`px-2.5 py-1 rounded-md font-medium transition ${
+                    filterStatus === 'all' ? 'bg-white text-slate-800 shadow-2xs' : 'text-slate-600 hover:text-slate-800'
+                  }`}
+                >
+                  ทั้งหมด ({entries.length})
+                </button>
+                <button
+                  onClick={() => setFilterStatus('unrecorded')}
+                  className={`px-2.5 py-1 rounded-md font-medium transition ${
+                    filterStatus === 'unrecorded' ? 'bg-amber-500 text-white shadow-2xs font-semibold' : 'text-slate-600 hover:text-slate-800'
+                  }`}
+                >
+                  ยังไม่บันทึก ({unrecordedDates.length})
+                </button>
+                <button
+                  onClick={() => setFilterStatus('recorded')}
+                  className={`px-2.5 py-1 rounded-md font-medium transition ${
+                    filterStatus === 'recorded' ? 'bg-white text-emerald-700 shadow-2xs' : 'text-slate-600 hover:text-slate-800'
+                  }`}
+                >
+                  บันทึกแล้ว ({summary.recordedDays})
+                </button>
               </div>
             </CardHeader>
             <CardContent className="p-0">
-              {records.length === 0 ? (
+              {filteredEntries.length === 0 ? (
                 <div className="py-12 text-center text-sm text-slate-400">
-                  ไม่มีประวัติการบันทึกสถิติในช่วงเวลาที่เลือก
+                  {filterStatus === 'unrecorded'
+                    ? '🎉 ยอดเยี่ยม! บันทึกสถิติครบทุกวันแล้ว ไม่มีวันที่ค้างบันทึก'
+                    : 'ไม่มีประวัติการบันทึกสถิติในช่วงเวลาที่เลือก'}
                 </div>
               ) : (
                 <div className="overflow-x-auto">
@@ -416,12 +517,62 @@ export function ClassroomHistoryView({ onSelectDate }: ClassroomHistoryViewProps
                         <th className="py-3 px-2 text-center">ลา</th>
                         <th className="py-3 px-2 text-center">ขาด</th>
                         <th className="py-3 px-2 text-center">% มาเรียน</th>
-                        <th className="py-3 px-3">ผู้บันทึก / หมายเหตุ</th>
+                        <th className="py-3 px-3">สถานะ / ผู้บันทึก</th>
                         <th className="py-3 px-3 text-right">การจัดการ</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
-                      {records.map((r) => {
+                      {filteredEntries.map((entry) => {
+                        const { date, hasRecord, record: r } = entry
+
+                        if (!hasRecord || !r) {
+                          // Unrecorded day row
+                          return (
+                            <tr
+                              key={date}
+                              onClick={() => onSelectDate?.(date)}
+                              className="bg-amber-50/40 hover:bg-amber-100/60 transition-colors cursor-pointer group"
+                            >
+                              <td className="py-3 px-3 font-semibold text-amber-900 whitespace-nowrap">
+                                <div className="flex items-center gap-1.5">
+                                  <AlertCircle className="h-3.5 w-3.5 text-amber-600" />
+                                  <span>{formatThaiDate(date)}</span>
+                                </div>
+                                <div className="text-[10px] text-amber-700 sm:hidden">{date}</div>
+                              </td>
+
+                              <td className="py-3 px-2 text-center text-slate-400">-</td>
+                              <td className="py-3 px-2 text-center text-slate-400">-</td>
+                              <td className="py-3 px-2 text-center text-slate-400">-</td>
+                              <td className="py-3 px-2 text-center text-slate-400">-</td>
+                              <td className="py-3 px-2 text-center text-slate-400">-</td>
+                              <td className="py-3 px-2 text-center text-slate-400">-</td>
+
+                              <td className="py-3 px-3">
+                                <Badge className="bg-amber-100 text-amber-800 hover:bg-amber-100 border-amber-300 font-semibold gap-1">
+                                  ⚠️ ยังไม่ได้บันทึก
+                                </Badge>
+                              </td>
+
+                              <td className="py-3 px-3 text-right whitespace-nowrap">
+                                <Button
+                                  variant="default"
+                                  size="sm"
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    onSelectDate?.(date)
+                                  }}
+                                  className="h-7 px-2.5 text-xs bg-amber-600 hover:bg-amber-700 text-white shadow-2xs font-medium"
+                                >
+                                  <PenSquare className="h-3 w-3 mr-1" />
+                                  <span>บันทึกข้อมูล</span>
+                                </Button>
+                              </td>
+                            </tr>
+                          )
+                        }
+
+                        // Recorded day row
                         const total = r.totalMale + r.totalFemale
                         const present = r.presentMale + r.presentFemale
                         const sick = r.sickMale + r.sickFemale
