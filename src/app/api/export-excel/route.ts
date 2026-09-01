@@ -7,13 +7,19 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url)
     const from = searchParams.get('from')
     const to = searchParams.get('to')
+    const classroomId = searchParams.get('classroomId')
 
     if (!from || !to) {
       return NextResponse.json({ error: 'from and to are required' }, { status: 400 })
     }
 
+    const whereClause: any = { date: { gte: from, lte: to } }
+    if (classroomId) {
+      whereClause.classroomId = classroomId
+    }
+
     const records = await db.attendanceRecord.findMany({
-      where: { date: { gte: from, lte: to } },
+      where: whereClause,
       include: { classroom: true },
       orderBy: [{ date: 'asc' }, { classroom: { sortOrder: 'asc' } }],
     })

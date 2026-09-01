@@ -5,7 +5,7 @@ import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import { CalendarDays, LayoutDashboard, Sparkles, Loader2, FileText, AlertTriangle, FileSpreadsheet } from 'lucide-react'
+import { CalendarDays, LayoutDashboard, Sparkles, Loader2, FileText, AlertTriangle, FileSpreadsheet, GraduationCap } from 'lucide-react'
 import { SiteHeader } from '@/components/attendance/site-header'
 import { SiteFooter } from '@/components/attendance/site-footer'
 import { SummaryCards } from '@/components/attendance/summary-cards'
@@ -14,6 +14,7 @@ import { TrendsChart } from '@/components/attendance/trends-chart'
 import { HistoryTable } from '@/components/attendance/history-table'
 import { CalendarView } from '@/components/attendance/calendar-view'
 import { ReportView } from '@/components/attendance/report-view'
+import { ClassroomHistoryView } from '@/components/attendance/classroom-history-view'
 import { DailyLog } from '@/components/attendance/daily-log'
 import { useSocketSync } from '@/components/attendance/use-socket-sync'
 import { todayBangkok } from '@/components/attendance/utils'
@@ -21,7 +22,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 
 const TAB_KEY = 'bnnm-active-tab'
 
-type TabKey = 'today' | 'calendar' | 'report'
+type TabKey = 'today' | 'calendar' | 'report' | 'classroom'
 
 export default function Home() {
   const todayStr = useMemo(() => todayBangkok(), [])
@@ -37,7 +38,7 @@ export default function Home() {
     if (typeof window === 'undefined') return 'today'
     const url = new URL(window.location.href)
     const fromUrl = url.searchParams.get('tab')
-    if (fromUrl === 'calendar' || fromUrl === 'today' || fromUrl === 'report') return fromUrl as TabKey
+    if (fromUrl === 'calendar' || fromUrl === 'today' || fromUrl === 'report' || fromUrl === 'classroom') return fromUrl as TabKey
     return (localStorage.getItem(TAB_KEY) as TabKey) ?? 'today'
   })
 
@@ -53,8 +54,8 @@ export default function Home() {
     localStorage.setItem(TAB_KEY, activeTab)
     if (typeof window !== 'undefined') {
       const url = new URL(window.location.href)
-      if (activeTab === 'calendar') url.searchParams.set('tab', 'calendar')
-      else url.searchParams.delete('tab')
+      if (activeTab === 'today') url.searchParams.delete('tab')
+      else url.searchParams.set('tab', activeTab)
       window.history.replaceState({}, '', url.toString())
     }
   }, [activeTab])
@@ -227,10 +228,14 @@ export default function Home() {
 
       <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-6 sm:px-6 sm:py-8">
         <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as TabKey)} className="space-y-6">
-          <TabsList className="grid w-full max-w-lg grid-cols-3">
+          <TabsList className="grid w-full max-w-xl grid-cols-4">
             <TabsTrigger value="today" className="gap-1.5">
               <LayoutDashboard className="h-4 w-4" />
               <span className="hidden sm:inline">รายวัน</span>
+            </TabsTrigger>
+            <TabsTrigger value="classroom" className="gap-1.5">
+              <GraduationCap className="h-4 w-4" />
+              <span className="hidden sm:inline">สถิติรายห้อง</span>
             </TabsTrigger>
             <TabsTrigger value="calendar" className="gap-1.5">
               <CalendarDays className="h-4 w-4" />
@@ -309,6 +314,11 @@ export default function Home() {
                 <HistoryTable />
               </div>
             </div>
+          </TabsContent>
+
+          {/* TAB: สถิติรายห้อง */}
+          <TabsContent value="classroom" className="space-y-4">
+            <ClassroomHistoryView onSelectDate={handleSelectDateFromCalendar} />
           </TabsContent>
 
           {/* TAB: ปฏิทิน */}
