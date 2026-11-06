@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { pushMessage } from '@/lib/line-api'
 import { db } from '@/lib/db'
+import { enrollmentForDate } from '@/lib/enrollment-server'
+import { dailyEnrollmentSummary } from '@/lib/enrollment-counts'
 
 export async function POST(req: NextRequest) {
   try {
@@ -23,9 +25,9 @@ export async function POST(req: NextRequest) {
     }
 
     if (action === 'report' && date) {
-      const classrooms = await db.classroom.findMany({
+      const classrooms = await enrollmentForDate(await db.classroom.findMany({
         orderBy: { sortOrder: 'asc' },
-      })
+      }), date)
       const records = await db.attendanceRecord.findMany({
         where: { date },
       })
@@ -45,18 +47,11 @@ export async function POST(req: NextRequest) {
       const [year, month, day] = date.split('-')
       const formattedDate = `${parseInt(day)}/${parseInt(month)}/${year}`
       
-      let grandTotal = 0
-      for (const c of classrooms) {
-        grandTotal += c.defaultMale + c.defaultFemale
-      }
+      const { grandTotal, unreportedCount } = dailyEnrollmentSummary(classrooms, records)
 
       const recordedClassroomIds = new Set(records.map(r => r.classroomId))
       const unrecordedClassrooms = classrooms.filter(c => !recordedClassroomIds.has(c.id))
       
-      let unreportedCount = 0
-      for (const c of unrecordedClassrooms) {
-        unreportedCount += c.defaultMale + c.defaultFemale
-      }
 
       let missingText = ''
       let reportStatusText = ''
@@ -65,14 +60,14 @@ export async function POST(req: NextRequest) {
       if (unrecordedClassrooms.length > 0) {
         const codes = unrecordedClassrooms.map(c => c.code).join(', ')
         missingText = `\n\n⚠️ ชั้นที่ยังไม่ได้บันทึกสถิติ ได้แก่ ${codes}`
-        reportStatusText = `\n📝 รายงานแล้ว: ${total} คน (ยังไม่รายงาน ${unreportedCount} คน)\n`
+        reportStatusText = `\n📝 รายงานแล้ว: ${total} คน (ยังไม่รายงาน ${unreportedCount === null ? 'ไม่ทราบจำนวน' : `${unreportedCount} คน`})\n`
         percentText = percent + '% จากที่รายงาน'
       } else {
         missingText = `\n\n✨ ทุกชั้นรายงานเรียบร้อย ขอบคุณค่ะ`
         reportStatusText = `\n📝 รายงานครบถ้วนแล้ว\n`
       }
 
-      const text = `📊 สรุปภาพรวมสถิติประจำวันที่ ${formattedDate}\n\nนักเรียนทั้งหมด: ${grandTotal} คน${reportStatusText}\n✅ มาเรียน: ${present} คน (${percentText})\n😷 ป่วย: ${sick} คน\n📝 ลา: ${leave} คน\n❌ ขาด: ${absent} คน${missingText}`
+      const text = `📊 สรุปภาพรวมสถิติประจำวันที่ ${formattedDate}\n\nนักเรียนทั้งหมด: ${grandTotal === null ? 'ไม่ทราบจำนวน' : `${grandTotal} คน`}${reportStatusText}\n✅ มาเรียน: ${present} คน (${percentText})\n😷 ป่วย: ${sick} คน\n📝 ลา: ${leave} คน\n❌ ขาด: ${absent} คน${missingText}`
 
       await pushMessage(groupId, [
         {

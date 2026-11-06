@@ -30,6 +30,7 @@ interface Classroom {
   sortOrder: number
   defaultMale: number
   defaultFemale: number
+  countKnown?: boolean
 }
 
 interface AttendanceRecord {
@@ -189,12 +190,12 @@ export function AttendanceForm({
   const todayStr = todayBangkok()
 
   const { data: classroomsData } = useQuery({
-    queryKey: ['classrooms'],
+    queryKey: ['classrooms', date],
     queryFn: async () => {
-      const res = await fetch('/api/classrooms')
+      const res = await fetch(`/api/classrooms?date=${date}`)
       return res.json()
     },
-    staleTime: 5 * 60 * 1000,
+    refetchInterval: 15000,
   })
   const classrooms: Classroom[] = classroomsData?.classrooms ?? []
 
@@ -223,8 +224,8 @@ export function AttendanceForm({
       const c = classrooms.find(x => x.id === classroomId)
       const e = edits[classroomId] ?? {}
       return {
-        totalMale: e.totalMale ?? (r ? String(r.totalMale) : String(c?.defaultMale || '')),
-        totalFemale: e.totalFemale ?? (r ? String(r.totalFemale) : String(c?.defaultFemale || '')),
+        totalMale: e.totalMale ?? (r ? String(r.totalMale) : c?.countKnown === false ? '' : String(c?.defaultMale ?? '')),
+        totalFemale: e.totalFemale ?? (r ? String(r.totalFemale) : c?.countKnown === false ? '' : String(c?.defaultFemale ?? '')),
         sickMale: e.sickMale ?? (r ? String(r.sickMale) : ''),
         sickFemale: e.sickFemale ?? (r ? String(r.sickFemale) : ''),
         leaveMale: e.leaveMale ?? (r ? String(r.leaveMale) : ''),
@@ -432,6 +433,9 @@ export function AttendanceForm({
             <CardDescription className="mt-1 text-slate-500">
               เลือกวันที่บันทึก แล้วกรอกจำนวนนักเรียนชาย/หญิง และจำนวนที่ป่วย/ลา/ขาด แยกชาย-หญิง ระบบจะคำนวณจำนวนที่มาให้เอง — ชื่อผู้บันทึกใช้จากบัญชี Google ที่ล็อกอิน
             </CardDescription>
+            {classrooms.some(c => c.countKnown === false && !recordsData?.records?.some((r: AttendanceRecord) => r.classroomId === c.id)) && (
+              <p className="mt-2 text-sm text-amber-800">บางชั้นยังไม่มีข้อมูลจำนวนนักเรียนสำหรับวันที่เลือก กรุณากรอกจำนวนจริง</p>
+            )}
           </div>
           <div className="flex items-end gap-2">
             <div className="space-y-1">

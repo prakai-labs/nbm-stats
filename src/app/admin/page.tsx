@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { EnrollmentSettings } from '@/components/attendance/enrollment-settings'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { Shield, ArrowLeft, Save, Trash2, Loader2, Users, Settings, Bell, BarChart3 } from 'lucide-react'
@@ -333,6 +334,8 @@ export default function AdminPage() {
                 </div>
               </CardContent>
             </Card>
+
+            <EnrollmentSettings />
 
             {/* แจ้งเตือน LINE */}
             <Card>

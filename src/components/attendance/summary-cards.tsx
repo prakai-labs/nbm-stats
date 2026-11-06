@@ -9,8 +9,8 @@ import { formatNumber, attendanceRate } from './utils'
 
 interface SummaryCardsProps {
   date: string
-  grandTotal: number
-  unreportedCount: number
+  grandTotal: number | null
+  unreportedCount: number | null
   totalMale: number
   totalFemale: number
   totalStudents: number
@@ -80,11 +80,12 @@ export function SummaryCards({
   const cards = [
     {
       label: 'จำนวนนักเรียนทั้งหมด',
-      value: grandTotal,
+      value: grandTotal === null ? 'ไม่ทราบ' : grandTotal,
+      isString: grandTotal === null,
       sub: (
         <span className="flex items-center gap-1.5">
           รายงานแล้ว <span className="font-semibold text-emerald-400">{totalStudents}</span> &middot; 
-          ยังไม่รายงาน <span className={unreportedCount > 0 ? "font-semibold text-rose-400" : "font-semibold"}>{unreportedCount}</span>
+          ยังไม่รายงาน <span className={unreportedCount !== null && unreportedCount > 0 ? "font-semibold text-rose-400" : "font-semibold"}>{unreportedCount ?? 'ไม่ทราบจำนวน'}</span>
         </span>
       ),
       icon: Users,
