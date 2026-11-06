@@ -111,8 +111,8 @@ const PRESETS = [
     const lastDay = `${ny}-${String(nm + 1).padStart(2, '0')}-${String(lastDayDate.getUTCDate()).padStart(2, '0')}`
     return { from: firstDay, to: lastDay }
   }},
-  { label: 'ภาคเรียนที่ 1', getRange: () => ({ from: `${new Date().getFullYear()}-05-01`, to: `${new Date().getFullYear()}-09-30` }) },
-  { label: 'ภาคเรียนที่ 2', getRange: () => ({ from: `${new Date().getFullYear()}-11-01`, to: `${new Date().getFullYear() + 1}-03-31` }) },
+  { label: 'ภาคเรียนที่ 1', getRange: () => ({ from: '', to: '' }) },
+  { label: 'ภาคเรียนที่ 2', getRange: () => ({ from: '', to: '' }) },
 ]
 
 export function ReportView() {
@@ -122,6 +122,15 @@ export function ReportView() {
   const [includeDaily, setIncludeDaily] = useState(true)
   const [includeSummary, setIncludeSummary] = useState(true)
   const [generating, setGenerating] = useState(false)
+
+  const { data: semesterSettings } = useQuery({
+    queryKey: ['semesterSettings'],
+    queryFn: async () => {
+      const response = await fetch('/api/settings/semester')
+      if (!response.ok) throw new Error('โหลดข้อมูลภาคเรียนไม่สำเร็จ')
+      return response.json() as Promise<{ term1?: { start: string; end: string }; term2?: { start: string; end: string } }>
+    },
+  })
 
   // Fetch report data
   const { data, isLoading, error } = useQuery({
@@ -169,6 +178,16 @@ export function ReportView() {
   }
 
   const handlePreset = (preset: typeof PRESETS[0]) => {
+    if (preset.label === 'ภาคเรียนที่ 1' || preset.label === 'ภาคเรียนที่ 2') {
+      const term = preset.label === 'ภาคเรียนที่ 1' ? semesterSettings?.term1 : semesterSettings?.term2
+      if (!term?.start || !term.end) {
+        toast.error('ยังไม่ได้ตั้งค่าวันเปิดและปิดภาคเรียน')
+        return
+      }
+      setFromDate(term.start)
+      setToDate(term.end)
+      return
+    }
     const range = preset.getRange()
     setFromDate(range.from)
     setToDate(range.to)

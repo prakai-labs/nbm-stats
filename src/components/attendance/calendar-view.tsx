@@ -10,6 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { formatThaiDate, formatNumber } from './utils'
+import { eventsForDate, eventsForMonth } from '@/lib/academic-calendar'
 
 interface CalendarDay {
   date: string
@@ -107,13 +108,10 @@ export function CalendarView({ onSelectDate, initialDate }: CalendarViewProps) {
   }
 
   const goToNextMonth = () => {
-    // ห้ามเลื่อนไปเดือนถัดไปเกินเดือนปัจจุบัน
-    const todayMonth = getMonthFromDate(today)
     let m = currentMonthNum + 1
     let y = currentYear
     if (m > 12) { m = 1; y += 1 }
     const newMonth = `${y}-${String(m).padStart(2, '0')}`
-    if (newMonth > todayMonth) return
     setCurrentMonth(newMonth)
   }
 
@@ -125,7 +123,7 @@ export function CalendarView({ onSelectDate, initialDate }: CalendarViewProps) {
 
   const handleDayClick = (day: CalendarDay) => {
     setSelectedDate(day.date)
-    onSelectDate?.(day.date)
+    if (day.date <= today) onSelectDate?.(day.date)
   }
 
   // หาสีพื้นหลังตามอัตราการมาเรียน
@@ -141,10 +139,11 @@ export function CalendarView({ onSelectDate, initialDate }: CalendarViewProps) {
 
   const isToday = (dateStr: string) => dateStr === today
   const isSelected = (dateStr: string) => dateStr === selectedDate
-  const isFuture = (dateStr: string) => dateStr > today
 
   // ข้อมูลของวันที่เลือก
   const selectedDay = days.find((d) => d.date === selectedDate)
+  const monthEvents = useMemo(() => eventsForMonth(currentMonth), [currentMonth])
+  const selectedEvents = useMemo(() => eventsForDate(selectedDate), [selectedDate])
 
   return (
     <div className="space-y-4">
@@ -214,7 +213,7 @@ export function CalendarView({ onSelectDate, initialDate }: CalendarViewProps) {
               </CardTitle>
             </div>
             <div className="flex items-center gap-1">
-              <Button variant="outline" size="sm" onClick={goToPrevMonth} className="h-8 px-2">
+              <Button variant="outline" size="sm" onClick={goToPrevMonth} aria-label="เดือนก่อนหน้า" className="h-8 px-2">
                 <ChevronLeft className="h-4 w-4" />
               </Button>
               <Button variant="outline" size="sm" onClick={goToToday} className="h-8 px-3 text-xs">
@@ -224,7 +223,7 @@ export function CalendarView({ onSelectDate, initialDate }: CalendarViewProps) {
                 variant="outline"
                 size="sm"
                 onClick={goToNextMonth}
-                disabled={currentMonth >= getMonthFromDate(today)}
+                aria-label="เดือนถัดไป"
                 className="h-8 px-2"
               >
                 <ChevronRight className="h-4 w-4" />
@@ -264,26 +263,26 @@ export function CalendarView({ onSelectDate, initialDate }: CalendarViewProps) {
                 const colorClass = getDayColor(day)
                 const selected = isSelected(day.date)
                 const today_ = isToday(day.date)
-                const future = isFuture(day.date)
+                const dayEvents = eventsForDate(day.date)
                 return (
                   <button
                     key={day.date}
-                    onClick={() => !future && handleDayClick(day)}
-                    disabled={future}
+                    onClick={() => handleDayClick(day)}
                     className={`relative aspect-square rounded-lg p-1.5 text-left transition-all ${
                       colorClass
                     } ${selected ? 'ring-2 ring-emerald-700 ring-offset-1' : ''} ${
                       today_ ? 'ring-1 ring-emerald-500' : ''
-                    } ${future ? 'opacity-30 cursor-not-allowed' : 'hover:scale-105 hover:shadow-md cursor-pointer'}`}
-                    title={day.hasData ? `${formatThaiDate(day.date)} — มา ${day.present}/${day.total} (${day.rate.toFixed(0)}%)` : formatThaiDate(day.date)}
+                    } hover:shadow-md cursor-pointer`}
+                    title={`${formatThaiDate(day.date)}${dayEvents.length ? ` — ${dayEvents.map(event => event.title).join(', ')}` : ''}${day.hasData ? ` — มา ${day.present}/${day.total} (${day.rate.toFixed(0)}%)` : ''}`}
                   >
                     <div className="flex items-start justify-between">
-                      <span className={`text-sm font-bold ${day.hasData ? '' : 'text-slate-400'}`}>
+                      <span className={`text-sm font-bold ${day.hasData ? '' : 'text-slate-600'}`}>
                         {day.day}
                       </span>
                       {today_ && (
                         <span className="text-[9px] font-semibold uppercase opacity-75">วันนี้</span>
                       )}
+                      {dayEvents.length > 0 && !today_ && <span aria-label="มีกิจกรรม" className="h-2 w-2 rounded-full bg-amber-500" />}
                     </div>
                     {day.hasData && (
                       <div className="mt-0.5 text-[10px] leading-tight opacity-95">
@@ -315,9 +314,24 @@ export function CalendarView({ onSelectDate, initialDate }: CalendarViewProps) {
             <span className="flex items-center gap-1">
               <span className="h-3 w-3 rounded bg-slate-50 ring-1 ring-slate-200" /> ยังไม่บันทึก
             </span>
+            <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-amber-500" /> มีกิจกรรมหรือวันหยุด</span>
           </div>
         </CardContent>
       </Card>
+
+      {monthEvents.length > 0 && (
+        <Card className="border-amber-100 shadow-sm">
+          <CardHeader className="pb-2"><CardTitle className="text-base">กิจกรรมและวันหยุดเดือน{THAI_MONTHS[currentMonthNum - 1]}</CardTitle>
+            <CardDescription>ตามปฏิทินการศึกษาโรงเรียน ภาคเรียนที่ 2/2569</CardDescription></CardHeader>
+          <CardContent><ul className="divide-y divide-slate-100">
+            {monthEvents.map((event, index) => <li key={`${event.start}-${index}`} className="flex flex-wrap items-start gap-x-3 gap-y-1 py-2 text-sm">
+              <span className="text-slate-500">{formatThaiDate(event.start)}{event.start !== event.end ? ` – ${formatThaiDate(event.end)}` : ''}</span>
+              <span className="flex-1 text-slate-800">{event.title}</span>
+              {event.kind === 'holiday' && <Badge variant="outline">วันหยุด</Badge>}
+            </li>)}
+          </ul></CardContent>
+        </Card>
+      )}
 
       {/* Selected day detail */}
       {selectedDay && (
@@ -332,6 +346,7 @@ export function CalendarView({ onSelectDate, initialDate }: CalendarViewProps) {
             </CardDescription>
           </CardHeader>
           <CardContent className="p-4">
+            {selectedEvents.length > 0 && <div className="mb-4 rounded-lg bg-amber-50 p-3 text-sm text-amber-950"><div className="font-semibold">กิจกรรมและวันหยุด</div><ul className="mt-1 list-disc pl-5">{selectedEvents.map((event, index) => <li key={`${event.start}-${index}`}>{event.title}</li>)}</ul></div>}
             {selectedDay.hasData ? (
               <div className="space-y-3">
                 <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
