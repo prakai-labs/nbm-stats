@@ -1,6 +1,6 @@
 import { describe, expect, mock, test } from 'bun:test'
 
-let rows: Array<{ key: string; value: string }> = []
+let rows = []
 mock.module('@/lib/db', () => ({ db: { systemSetting: { findMany: async () => rows } } }))
 const { enrollmentForDate } = await import('./enrollment-server')
 

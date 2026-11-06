@@ -21,6 +21,7 @@ import { Badge } from '@/components/ui/badge'
 import { toast } from 'sonner'
 import { formatThaiDate, todayBangkok } from './utils'
 import { EditingSlot } from './use-socket-sync'
+import { previousCalendarDate, canCopyAttendance } from '@/lib/copy-attendance'
 
 interface Classroom {
   id: string
@@ -88,92 +89,6 @@ const emptyRow: RowState = {
 }
 
 
-// Copy from previous day button
-function CopyFromPrevious({ currentDate, classrooms, setEdits, teacherName, onStartEditing, editingClassroomIds, setEditingClassroomIds }: {
-  currentDate: string
-  classrooms: Classroom[]
-  setEdits: React.Dispatch<React.SetStateAction<Record<string, Partial<RowState>>>>
-  teacherName: string
-  onStartEditing: (date: string, classroomId: string) => void
-    editingClassroomIds: Set<string>
-  setEditingClassroomIds: React.Dispatch<React.SetStateAction<Set<string>>>
-}) {
-  const [isLoading, setIsLoading] = useState(false)
-  const queryClient = useQueryClient()
-
-  const handleCopy = async () => {
-    setIsLoading(true)
-    try {
-      // Fetch last 30 days of attendance
-      const res = await fetch('/api/attendance')
-      const data = await res.json()
-      const records: AttendanceRecord[] = data?.records ?? []
-
-      // Find most recent date with data (excluding currentDate)
-      const dates = [...new Set(records.map(r => r.date))].sort((a, b) => b.localeCompare(a))
-      const prevDate = dates.find(d => d !== currentDate)
-
-      if (!prevDate) {
-        toast.error('ไม่พบข้อมูลวันที่ผ่านมา')
-        setIsLoading(false)
-        return
-      }
-
-      // Get records for that date
-      const prevRecords = records.filter(r => r.date === prevDate)
-      const newEdits: Record<string, Partial<RowState>> = {}
-
-      for (const c of classrooms) {
-        const prev = prevRecords.find(r => r.classroomId === c.id)
-        if (prev) {
-          newEdits[c.id] = {
-            totalMale: String(prev.totalMale),
-            totalFemale: String(prev.totalFemale),
-            sickMale: String(prev.sickMale),
-            sickFemale: String(prev.sickFemale),
-            leaveMale: String(prev.leaveMale),
-            leaveFemale: String(prev.leaveFemale),
-            absentMale: String(prev.absentMale),
-            absentFemale: String(prev.absentFemale),
-            note: prev.note ?? '',
-          }
-          // Mark as editing
-          onStartEditing(currentDate, c.id)
-        }
-      }
-
-      setEdits(newEdits)
-      // Add all classroom IDs to editing set
-      const newSet = new Set(editingClassroomIds)
-      for (const c of classrooms) {
-        if (newEdits[c.id]) newSet.add(c.id)
-      }
-      setEditingClassroomIds(newSet)
-
-      toast.success(`คัดลอกข้อมูลจาก ${prevDate} แล้ว`, {
-        description: `${Object.keys(newEdits).length} ห้องเรียน`,
-      })
-    } catch {
-      toast.error('คัดลอกไม่สำเร็จ')
-    }
-    setIsLoading(false)
-  }
-
-  return (
-    <div className="flex items-center gap-2 px-1 pb-2">
-      <Button
-        size="sm"
-        variant="outline"
-        onClick={handleCopy}
-        disabled={isLoading}
-        className="h-7 gap-1 border-emerald-200 bg-emerald-50/50 text-xs text-emerald-700 hover:bg-emerald-100"
-      >
-        <RotateCcw className={`h-3 w-3 ${isLoading ? 'animate-spin' : ''}`} />
-        คัดลอกข้อมูลจากครั้งก่อน
-      </Button>
-    </div>
-  )
-}
 export function AttendanceForm({
   date,
   onDateChange,
@@ -208,6 +123,17 @@ export function AttendanceForm({
     refetchInterval: 15000,
   })
   const records: AttendanceRecord[] = recordsData?.records ?? []
+  const previousDate = previousCalendarDate(date)
+  const { data: previousData } = useQuery({
+    queryKey: ['attendance', previousDate], enabled: Boolean(previousDate),
+    queryFn: async () => {
+      const res = await fetch(`/api/attendance?date=${previousDate}`)
+      if (!res.ok) throw new Error('โหลดสถิติเมื่อวานไม่สำเร็จ')
+      return res.json() as Promise<{ records: AttendanceRecord[] }>
+    },
+    refetchInterval: 15000,
+  })
+  const previousByClass = useMemo(() => new Map((previousData?.records ?? []).map(record => [record.classroomId, record])), [previousData])
 
   const [edits, setEdits] = useState<Record<string, Partial<RowState>>>({})
   const [editingClassroomIds, setEditingClassroomIds] = useState<Set<string>>(new Set())
@@ -434,7 +360,7 @@ export function AttendanceForm({
               เลือกวันที่บันทึก แล้วกรอกจำนวนนักเรียนชาย/หญิง และจำนวนที่ป่วย/ลา/ขาด แยกชาย-หญิง ระบบจะคำนวณจำนวนที่มาให้เอง — ชื่อผู้บันทึกใช้จากบัญชี Google ที่ล็อกอิน
             </CardDescription>
             {classrooms.some(c => c.countKnown === false && !recordsData?.records?.some((r: AttendanceRecord) => r.classroomId === c.id)) && (
-              <p className="mt-2 text-sm text-amber-800">บางชั้นยังไม่มีข้อมูลจำนวนนักเรียนสำหรับวันที่เลือก กรุณากรอกจำนวนจริง</p>
+              <p className="mt-2 text-sm text-amber-800">บางชั้นยังไม่มีข้อมูลจำนวนนักเรียนสำหรับวันที่เลือก กรุณาติดต่อผู้ดูแลเพื่อตั้งจำนวนจริง</p>
             )}
           </div>
           <div className="flex items-end gap-2">
@@ -509,6 +435,15 @@ export function AttendanceForm({
                   slotKey={slotKey}
                   currentUserId={currentUserId}
                   isAdmin={isAdmin}
+                  previousByClass={previousByClass}
+                  copyPrevious={(id, previous) => {
+                    setEdits(current => ({ ...current, [id]: { ...current[id],
+                      sickMale: String(previous.sickMale), sickFemale: String(previous.sickFemale),
+                      leaveMale: String(previous.leaveMale), leaveFemale: String(previous.leaveFemale),
+                      absentMale: String(previous.absentMale), absentFemale: String(previous.absentFemale),
+                    } }))
+                    toast.success('คัดลอกสถิติเมื่อวานแล้ว กรุณาตรวจสอบก่อนกดบันทึก')
+                  }}
                 />
               ))}
               {classrooms.length === 0 && (
@@ -554,6 +489,8 @@ export function AttendanceForm({
 }
 
 interface ClassroomGroupRowsProps {
+  previousByClass: Map<string, AttendanceRecord>
+  copyPrevious: (id: string, previous: AttendanceRecord) => void
   group: { level: string; classrooms: Classroom[] }
   getRowState: (classroomId: string) => RowState
   recordByClass: Map<string, AttendanceRecord>
@@ -577,6 +514,8 @@ interface ClassroomGroupRowsProps {
 
 function ClassroomGroupRows({
   group,
+  previousByClass,
+  copyPrevious,
   getRowState,
   recordByClass,
   totalByClass,
@@ -625,6 +564,7 @@ function ClassroomGroupRows({
         const r = getRowState(c.id)
         const calc = totalByClass(c.id)
         const existing = recordByClass.get(c.id)
+        const previous = previousByClass.get(c.id)
         const slot = getSlot(c.id)
         const lockedByOther = slot && slot.userId !== currentUserId
         const isSaving = saveMutation.isPending && saveMutation.variables === c.id
@@ -675,8 +615,8 @@ function ClassroomGroupRows({
                     toast.error('จำนวนป่วย+ลา+ขาด มากกว่าจำนวนนักเรียน (แยกตามเพศ)')
                     return
                   }
-                  if (!r.totalMale && !r.totalFemale) {
-                    toast.error('กรุณากรอกจำนวนนักเรียนชายหรือหญิงอย่างน้อย 1 คน')
+                  if (r.totalMale === '' || r.totalFemale === '') {
+                    toast.error('กรุณาระบุจำนวนนักเรียนชายและหญิงให้ครบ โดยใส่ 0 หากไม่มี')
                     return
                   }
                   await saveMutation.mutateAsync(c.id)
@@ -695,6 +635,11 @@ function ClassroomGroupRows({
             {/* Classroom name — not sticky */}
             <td className="px-2 py-3 text-left min-w-[200px]">
               <div className="text-sm font-medium text-slate-800">{c.name}</div>
+              {!existing && previous && !lockedByOther && canCopyAttendance(r, previous) && (
+                <Button type="button" size="sm" variant="outline" className="mt-1 h-7 text-xs" onClick={() => copyPrevious(c.id, previous)}>
+                  คัดลอกจากเมื่อวาน
+                </Button>
+              )}
               {existing?.recordedBy && (
                 <div className="text-[11px] text-slate-400">
                   บันทึกล่าสุดโดย {existing.recordedBy}
